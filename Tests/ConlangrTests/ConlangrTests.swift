@@ -13,9 +13,9 @@ import Testing
   vowel = (? 2 &v &diph)
 
   ; simple syllable: CVC or CV
-  syl = (? (+ &c &vowel &c) (+ &c &vowel))
+  syl = (? (+ &c &vowel &c) 2 (+ &c &vowel))
 
-  _ = (+ &syl &syl 2 &syl - *aa* *ii* *uu* *yy*) 
+  _ = (+ &syl 4 &syl - *aa* *ii* *uu* *yy* *vv* *fv* *vf*) 
   """
   do {
     let output = try parse(grammar, with: script)
