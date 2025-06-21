@@ -1,11 +1,11 @@
 import Parsimonious
 
-enum Quantifier {
+enum Quantifier: Sendable {
   case numeric(UInt8)
   case variable(String)
 }
 
-enum ParseProduction {
+enum ParseProduction: Sendable {
   case literal(String)
   case ref(String)
   case spread([String])
@@ -13,7 +13,7 @@ enum ParseProduction {
   case concat([(Quantifier, ParseProduction)], [Rewrite])
 }
 
-struct Script {
+struct Script: Sendable {
   let variables: [String: UInt8]
   let productions: [String: ParseProduction]
 }
