@@ -15,7 +15,6 @@ import Testing
   ; simple syllable: CVC or CV
   syl = (? (+ &c &vowel &c) (+ &c &vowel))
 
-  ; usually 1 or 2 syllables, controlled externally by syl_count
   _ = (+ &syl &syl 2 &syl - *aa* *ii* *uu* *yy*) 
   """
   do {
