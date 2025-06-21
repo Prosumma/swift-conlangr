@@ -43,7 +43,6 @@ extension Script {
   func normalize(with overrides: [String: UInt8] = [:]) throws -> Generator {
     var variables = variables
     variables.merge(overrides) { _, b in b } 
-    print(variables)
     let normalized = productions.mapValues { $0.normalize(with: variables) }
     if !normalized.keys.contains("") {
       throw ScriptError.noMain
