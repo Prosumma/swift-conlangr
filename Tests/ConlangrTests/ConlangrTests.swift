@@ -4,7 +4,19 @@ import Testing
 
 @Test func example() async throws {
   let grammar = """
-  
+  ; Old Norse
+  c = *ptkksnðrlmjgvhfb
+  v = *aeiouyøæǫ
+  diph = (? ei au ey øy)
+
+  ; sometimes include diphthongs, sometimes not
+  vowel = (? 2 &v &diph)
+
+  ; simple syllable: CVC or CV
+  syl = (? (+ &c &vowel &c) (+ &c &vowel))
+
+  ; usually 1 or 2 syllables, controlled externally by syl_count
+  _ = (+ &syl &syl 2 &syl - *aa* *ii* *uu* *yy*) 
   """
   do {
     let output = try parse(grammar, with: script)
