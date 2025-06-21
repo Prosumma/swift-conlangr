@@ -15,7 +15,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/Prosumma/Parsimonious",
-      from: "2.5.0"
+      from: "2.5.1"
     ),
   ],
   targets: [
