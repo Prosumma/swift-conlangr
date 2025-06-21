@@ -40,6 +40,7 @@ public extension Production {
       }
       return literal
     case let .ref(ref):
+      try context.eval()
       guard let production = context.productions[ref] else {
         throw EvaluationError.refNotFound(ref)
       }
