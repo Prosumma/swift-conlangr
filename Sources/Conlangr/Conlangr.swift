@@ -44,6 +44,12 @@ public struct Substitution: Hashable, Sendable {
 public struct Skip: Hashable, Sendable {
   public let mode: MatchMode
   public let model: String
+  
+  @Sendable
+  public init(mode: MatchMode, model: String) {
+    self.mode = mode
+    self.model = model
+  }
 
   public func shouldSkip(_ input: String) -> Bool {
     switch mode {

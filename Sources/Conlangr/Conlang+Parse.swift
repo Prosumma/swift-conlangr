@@ -33,6 +33,7 @@ func wspd<Output>(_ parser: Parser<String, Output>) -> Parser<String, Output> {
 
 let reserved = "(+?&-$@!^*='\":;#0123456789<>)"
 
+@Sendable
 func is_reserved(_ c: Character) -> Bool {
   reserved.contains(c)
 }
@@ -52,6 +53,7 @@ let escaped = (escapechar <|> unescapechar)+.joined()
  See the `unescaped` parser, which is what you want to use
  for ordinary strings most of the time.
  */
+@Sendable
 func unescape(_ input: String) throws -> String {
   if input == "_" {
     return ""
@@ -78,6 +80,7 @@ func unescape(_ input: String) throws -> String {
 
 let unescaped = escaped >>> unescape
 
+@Sendable
 func spread(_ input: String) -> [String] {
   var output: [String] = []
   var escaping = false
@@ -94,10 +97,12 @@ func spread(_ input: String) -> [String] {
   return output
 }
 
+@Sendable
 func assign<N, V>(_ name: Parser<String, N>, to value: Parser<String, V>) -> Parser<String, (N, V)> {
   tuple(name <* wspd(char("=")), value)
 }
 
+@Sendable
 func toDictionary<Key, Value>(_ input: [(Key, Value)]) -> [Key: Value] {
   var dictionary: [Key: Value] = [:]
   for (key, value) in input {
@@ -106,21 +111,21 @@ func toDictionary<Key, Value>(_ input: [(Key, Value)]) -> [Key: Value] {
   return dictionary
 }
 
-let numeric: Parser<String, UInt8> = char(any: "0123456789")* >>> { input in
+let numeric: Parser<String, UInt8> = char(any: "0123456789")* >>> { @Sendable input in
   guard let quantifier = UInt8(input) else {
     throw ScriptError.invalidNumericQuantifier(input)
   }
   return quantifier 
 }
-let numericQuantifier = numeric >>> Quantifier.numeric
+let numericQuantifier = numeric >>> { Quantifier.numeric($0) }
 let variable = wspd(char("$")) *> unescaped
-let variableQuantifier = variable >>> Quantifier.variable 
+let variableQuantifier = variable >>> { Quantifier.variable($0) }
 let quantifier = numericQuantifier <|> variableQuantifier
 
 let matchMode: Parser<String, Bool> = (char("*") <|> just("")) >>> { input in
   input == "*"
 }
-let wildcard: Parser<String, (MatchMode, String)> = tuple(matchMode, unescaped, matchMode) >>> { leftMode, input, rightMode in
+let wildcard: Parser<String, (MatchMode, String)> = tuple(matchMode, unescaped, matchMode) >>> { @Sendable leftMode, input, rightMode in
   let mode: MatchMode = switch (leftMode, rightMode) {
   case (true, true): .all
   case (true, false): .atEnd
@@ -129,23 +134,23 @@ let wildcard: Parser<String, (MatchMode, String)> = tuple(matchMode, unescaped, 
   }
   return (mode, input)
 }
-let skip = wildcard >>> Skip.init
+let skip = wildcard >>> { Skip.init(mode: $0.0, model: $0.1) }
 let substitution=assign(wildcard, to: unescaped) >>> { input in
   Substitution(mode: input.0.0, from: input.0.1, to: input.1)
 }
-let skips = wspd(char("-")) *> wspd(skip)* >>> Set.init >>> Rewrite.skips
-let substitutions = wspd(char(">")) *> wspd(substitution)* >>> Rewrite.substitutions
+let skips = wspd(char("-")) *> wspd(skip)* >>> { Set.init($0) } >>> { Rewrite.skips($0) }
+let substitutions = wspd(char(">")) *> wspd(substitution)* >>> { Rewrite.substitutions($0) }
 let rewrites = (skips <|> substitutions)*
 
-let literal = unescaped >>> ParseProduction.literal
-let ref = wspd(char("&")) *> unescaped >>> ParseProduction.ref
-let spreadSelect = wspd(char("*")) *> escaped >>> spread >>> ParseProduction.spread
+let literal = unescaped >>> { ParseProduction.literal($0) }
+let ref = wspd(char("&")) *> unescaped >>> { ParseProduction.ref($0) }
+let spreadSelect = wspd(char("*")) *> escaped >>> spread >>> { ParseProduction.spread($0) }
 let production: Parser<String, ParseProduction> = literal <|> ref <|> spreadSelect <|> select <|> concat
 let unquantifiedProduction = production >>> { (Quantifier.numeric(1), $0) }
 let quantifiedProduction = tuple(wspd(quantifier), production) <|> unquantifiedProduction
-let select = parenthesized(wspd(char("?")) *> wspd(quantifiedProduction)+) >>> ParseProduction.select
-let concat = parenthesized(wspd(char("+")) *> tuple(wspd(quantifiedProduction)+, rewrites)) >>> ParseProduction.concat
+let select = parenthesized(wspd(char("?")) *> wspd(quantifiedProduction)+) >>> { ParseProduction.select($0) }
+let concat = parenthesized(wspd(char("+")) *> tuple(wspd(quantifiedProduction)+, rewrites)) >>> { ParseProduction.concat($0.0, $0.1) }
 
 let variableAssignments = wspd(assign(variable, to: numeric))* >>> toDictionary
 let productionAssignments = wspd(assign(unescaped, to: production))+ >>> toDictionary
-let script = tuple(variableAssignments, productionAssignments) >>> Script.init <* eof()
+let script = tuple(variableAssignments, productionAssignments) >>> { Script.init(variables: $0.0, productions: $0.1) } <* eof()
