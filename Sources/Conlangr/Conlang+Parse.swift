@@ -31,7 +31,7 @@ func wspd<Output>(_ parser: Parser<String, Output>) -> Parser<String, Output> {
   delimit(parser, by: (.whitespace <|> comment)*)
 }
 
-let reserved = "(+?&-$@!^*='\":;#0123456789<>)"
+let reserved = "({[+?&-$@!^*='\":;#0123456789<>]})"
 
 @Sendable
 func is_reserved(_ c: Character) -> Bool {
