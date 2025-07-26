@@ -25,7 +25,7 @@ enum ScriptError: Error {
   case noMain
 }
 
-let comment: Parser<String, String> = char(";") *> char(not(\Character.isNewline))* <* .newline 
+let comment: Parser<String, String> = char(";") *> char(not(\Character.isNewline))* <* (void(.newline) <|> eof())
 
 func wspd<Output>(_ parser: Parser<String, Output>) -> Parser<String, Output> {
   delimit(parser, by: (.whitespace <|> comment)*)
@@ -153,4 +153,4 @@ let concat = parenthesized(wspd(char("+")) *> tuple(wspd(quantifiedProduction)+,
 
 let variableAssignments = wspd(assign(variable, to: numeric))* >>> toDictionary
 let productionAssignments = wspd(assign(unescaped, to: production))+ >>> toDictionary
-let script = tuple(variableAssignments, productionAssignments) >>> { Script.init(variables: $0.0, productions: $0.1) } <* eof()
+let script = wspd(tuple(wspd(variableAssignments), wspd(productionAssignments))) >>> { Script.init(variables: $0.0, productions: $0.1) } <* eof()
