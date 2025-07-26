@@ -18,7 +18,7 @@ import Testing
   _ = (+ &syl 4 &syl - *aa* *ii* *uu* *yy* *vv* *fv* *vf*) 
   """
   do {
-    let output = try parse(grammar, with: script)
+    let output = try parse(grammar)
     let generator = try output.normalize()
     for _ in 0..<10 {
       try print("ON: \(generator.eval())")
@@ -101,7 +101,7 @@ import Testing
   _ = (+ &S 2 &S)
   """
   do {
-    let output = try parse(grammar, with: script)
+    let output = try parse(grammar)
     let generator = try output.normalize()
     for _ in 0..<10 {
       try print("KLINGON: \(generator.eval())")
@@ -127,7 +127,7 @@ import Testing
   _ = (+ &S 2 &S)
   """
   do {
-    let output = try parse(grammar, with: script)
+    let output = try parse(grammar)
     let generator = try output.normalize()
     for _ in 0..<10 {
       try print("SUMERIAN: \(generator.eval())")
@@ -151,7 +151,7 @@ import Testing
   _       = (+ &initialc 2 &middle 1 &final - *yi*) ; Hello!
   """
   do {
-    let output = try parse(grammar, with: script)
+    let output = try parse(grammar)
     let generator = try output.normalize()
     for _ in 0..<10 {
       try print("QUENYA: \(generator.eval())")

@@ -13,12 +13,12 @@ enum ParseProduction: Sendable {
   case concat([(Quantifier, ParseProduction)], [Rewrite])
 }
 
-struct Script: Sendable {
+public struct Script: Sendable {
   let variables: [String: UInt8]
   let productions: [String: ParseProduction]
 }
 
-enum ScriptError: Error {
+public enum ScriptError: Error {
   case invalidNumericQuantifier(String)
   case stringTooLong(String)
   case danglingEscapeCharacter 
@@ -154,3 +154,7 @@ let concat = parenthesized(wspd(char("+")) *> tuple(wspd(quantifiedProduction)+,
 let variableAssignments = wspd(assign(variable, to: numeric))* >>> toDictionary
 let productionAssignments = wspd(assign(unescaped, to: production))+ >>> toDictionary
 let script = wspd(tuple(wspd(variableAssignments), wspd(productionAssignments))) >>> { Script.init(variables: $0.0, productions: $0.1) } <* eof()
+
+public func parse(_ grammar: String) throws -> Script {
+  try parse(grammar, with: script)
+}

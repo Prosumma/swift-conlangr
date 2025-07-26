@@ -17,6 +17,7 @@ public extension Token {
     case op // = + ? - & > * $
     case number 
     case comment
+    case error
   }
 }
 
@@ -25,4 +26,9 @@ let tokenParens: Parser<String, Token> = char(any: "()").withRange() >>> toToken
 let tokenOp: Parser<String, Token> = char(any: "=+?-&>*$").withRange() >>> toToken(.op)
 let tokenNumber: Parser<String, Token> = char(any: "0123456789").withRange() >>> toToken(.number)
 let tokenComment = comment.withRange() >>> toToken(.comment)
-let token = whitespaced(tokenLiteral <|> tokenParens <|> tokenOp <|> tokenNumber <|> tokenComment)
+let tokenError: Parser<String, Token> = char(not(\Character.isWhitespace))+.withRange() >>> toToken(.error)
+let token = whitespaced(tokenLiteral <|> tokenParens <|> tokenOp <|> tokenNumber <|> tokenComment <|> tokenError)
+
+public func tokenize(_ grammar: String) throws -> [Token] {
+  try parse(grammar, with: token* <* eof())
+}

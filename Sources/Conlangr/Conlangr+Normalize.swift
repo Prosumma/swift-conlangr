@@ -39,7 +39,7 @@ extension ParseProduction {
 }
 
 
-extension Script {
+public extension Script {
   func normalize(with overrides: [String: UInt8] = [:]) throws -> Generator {
     var variables = variables
     variables.merge(overrides) { _, b in b } 
