@@ -1,4 +1,4 @@
-public enum EvaluationError: Error, Equatable {
+public enum EvaluationError: Error, Equatable, Hashable {
   case evaluationCountExceeded
   case refNotFound(String)
   case generatedStringTooLong(String)
