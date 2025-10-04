@@ -1,13 +1,13 @@
 {
-  "originHash" : "a7508a69117b1619a6ffe4af33459709005a537f3e54e6e929097442b560b967",
+  "originHash" : "9f060dde5d13ab1ab929278bba70ed62fea54243ce6c074771e7555134b86216",
   "pins" : [
     {
       "identity" : "parsimonious",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Prosumma/Parsimonious",
       "state" : {
-        "revision" : "8ba64f7808bf04aa56733ac2d3cbd03dc72e269a",
-        "version" : "2.5.2"
+        "revision" : "aebb81c5ff480c4c189f7a72cc90f4df0341b523",
+        "version" : "2.6.0"
       }
     }
   ],
