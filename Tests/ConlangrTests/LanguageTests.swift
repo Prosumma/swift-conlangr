@@ -1,0 +1,262 @@
+import Conlangr
+import Testing
+
+struct LiteralTests {
+  @Test func literal() throws {
+    #expect(try word("_ = hello") == "hello")
+  }
+
+  @Test func underscoreIsEmpty() throws {
+    #expect(try word("_ = _") == "")
+  }
+
+  @Test func underscoreInsideTextIsAnUnderscore() throws {
+    #expect(try word("_ = a_b") == "a_b")
+  }
+
+  @Test func escapes() throws {
+    #expect(try word("_ = (+ %' %( %3 %% %_)") == "'(3%_")
+  }
+
+  @Test func unicode() throws {
+    #expect(try word("_ = (+ ð ʔ ǫ e\u{301})") == "ðʔǫé")
+  }
+
+  @Test func whitespaceAndComments() throws {
+    let source = """
+      ; A comment on its own line.
+      _ = (   +     ; A comment inside a group.
+        a
+          b   ; Another.
+      )   ; And one at the end, with no newline after it.
+      """
+    #expect(try word(source) == "ab")
+  }
+
+  @Test func maximumLengthLiteral() throws {
+    let text = String(repeating: "a", count: Generator.maximumLength)
+    #expect(try word("_ = \(text)") == text)
+    // The same text through a reference: the limits agree.
+    #expect(try word("x = \(text)\n_ = &x") == text)
+  }
+}
+
+struct ReferenceTests {
+  @Test func reference() throws {
+    #expect(try word("x = hello\n_ = &x") == "hello")
+  }
+
+  @Test func definitionOrderDoesNotMatter() throws {
+    #expect(try word("_ = (+ &a &b)\nb = second\na = first") == "firstsecond")
+  }
+
+  @Test func escapedName() throws {
+    #expect(try word("%3x = yes\n_ = &%3x") == "yes")
+  }
+
+  @Test func recursion() throws {
+    // Each word is one or more a's.
+    let words = try words("w = (? a (+ a &w))\n_ = &w")
+    #expect(!words.isEmpty)
+    #expect(words.allSatisfy { !$0.isEmpty && $0.allSatisfy { $0 == "a" } })
+  }
+
+  @Test func mainCanReferToItself() throws {
+    let words = try words("_ = (? 3 b (+ a &_))")
+    #expect(words.contains("b"))
+    #expect(words.contains("ab"))
+  }
+}
+
+struct SpreadTests {
+  @Test func eachCharacterIsEquallyLikely() throws {
+    let tally = try tally("_ = *abc")
+    #expect(Set(tally.keys) == ["a", "b", "c"])
+    #expect(near(tally["a"], 1 / 3))
+    #expect(near(tally["b"], 1 / 3))
+    #expect(near(tally["c"], 1 / 3))
+  }
+
+  @Test func repeatedCharactersCountAgain() throws {
+    // `*ptkk` means `(? p t k k)`, so k is twice as likely as p or t.
+    let tally = try tally("_ = *ptkk")
+    #expect(near(tally["p"], 1 / 4))
+    #expect(near(tally["t"], 1 / 4))
+    #expect(near(tally["k"], 2 / 4))
+  }
+
+  @Test func underscoreIsAnEmptyAlternative() throws {
+    let tally = try tally("_ = *a_")
+    #expect(near(tally["a"], 1 / 2))
+    #expect(near(tally[""], 1 / 2))
+  }
+
+  @Test func escapes() throws {
+    #expect(try words("_ = *%3%_%*") == ["3", "_", "*"])
+  }
+
+  @Test func charactersAreGraphemes() throws {
+    #expect(try words("_ = *e\u{301}ǫ") == ["é", "ǫ"])
+  }
+}
+
+struct SelectTests {
+  @Test func unweighted() throws {
+    let tally = try tally("_ = (? a b)")
+    #expect(near(tally["a"], 1 / 2))
+    #expect(near(tally["b"], 1 / 2))
+  }
+
+  @Test func weights() throws {
+    let tally = try tally("_ = (? 3 a b 6 c)")
+    #expect(near(tally["a"], 3 / 10))
+    #expect(near(tally["b"], 1 / 10))
+    #expect(near(tally["c"], 6 / 10))
+  }
+
+  @Test func repeatedAlternativesCountAgain() throws {
+    let tally = try tally("_ = (? a a b)")
+    #expect(near(tally["a"], 2 / 3))
+    #expect(near(tally["b"], 1 / 3))
+  }
+
+  @Test func zeroWeightIsNeverChosen() throws {
+    #expect(try words("_ = (? 0 a b)") == ["b"])
+  }
+
+  @Test func weightWithoutSpace() throws {
+    #expect(try words("_ = (? 0a b)") == ["b"])
+  }
+
+  @Test func nested() throws {
+    #expect(try words("_ = (? (+ a b) *cd)") == ["ab", "c", "d"])
+  }
+
+  @Test func maximumWeight() throws {
+    let tally = try tally("_ = (? 255 a b)")
+    #expect(near(tally["a"], 255 / 256))
+  }
+}
+
+struct SequenceTests {
+  @Test func concatenates() throws {
+    #expect(try word("_ = (+ a b c)") == "abc")
+  }
+
+  @Test func repeatCountIsAMaximum() throws {
+    let tally = try tally("_ = (+ a 3 b)")
+    #expect(Set(tally.keys) == ["ab", "abb", "abbb"])
+    #expect(near(tally["ab"], 1 / 3))
+    #expect(near(tally["abb"], 1 / 3))
+    #expect(near(tally["abbb"], 1 / 3))
+  }
+
+  @Test func eachRepetitionIsChosenSeparately() throws {
+    #expect(try words("_ = (+ 2 *ab)") == ["a", "b", "aa", "ab", "ba", "bb"])
+  }
+
+  @Test func optionalItem() throws {
+    #expect(try words("_ = (+ ta (? *nm _))") == ["ta", "tan", "tam"])
+  }
+}
+
+struct RewriteTests {
+  @Test(arguments: [
+    ("aXa", "*a*=o", "oXo"),
+    ("aXa", "a*=o", "oXa"),
+    ("aXa", "*a=o", "aXo"),
+    ("aXa", "aXa=yes", "yes"),
+    ("aXa", "aX=no", "aXa"),
+    ("aXa", "*X*=_", "aa"),
+    ("aXa", "*b*=c", "aXa"),
+  ])
+  func substitution(word input: String, substitution: String, expected: String) throws {
+    #expect(try word("_ = (+ \(input) > \(substitution))") == expected)
+  }
+
+  @Test func substitutionsRunInOrder() throws {
+    #expect(try word("_ = (+ ab > *a*=b *b*=c)") == "cc")
+    #expect(try word("_ = (+ ab > *b*=c *a*=b)") == "bc")
+  }
+
+  @Test func spacesAroundEquals() throws {
+    #expect(try word("_ = (+ ab > *a* = x)") == "xb")
+  }
+
+  @Test(
+    arguments: [
+      ("*aa*", ["ab", "ba", "bb"]),
+      ("a*", ["ba", "bb"]),
+      ("*a", ["ab", "bb"]),
+      ("ab", ["aa", "ba", "bb"]),
+    ] as [(String, Set<String>)])
+  func skip(pattern: String, expected: Set<String>) throws {
+    #expect(try words("_ = (+ *ab *ab - \(pattern))") == expected)
+  }
+
+  @Test func severalSkips() throws {
+    #expect(try words("_ = (+ *ab *ab - aa bb)") == ["ab", "ba"])
+  }
+
+  @Test func skipEmptyWord() throws {
+    #expect(try words("_ = (+ *a_ - _)") == ["a"])
+  }
+
+  @Test func skipAfterSubstitutionSeesTheSubstitutedWord() throws {
+    #expect(try words("_ = (+ *ab > *a*=z - *z*)") == ["b"])
+  }
+
+  @Test func substitutionAfterSkip() throws {
+    #expect(try words("_ = (+ *ab - a > b=c)") == ["c"])
+  }
+
+  @Test func rewritesApplyOnlyToTheirOwnSequence() throws {
+    // The inner sequence turns a into b, but the outer one adds another a afterward.
+    #expect(try word("_ = (+ (+ a > a=b) a)") == "ba")
+  }
+}
+
+struct VariableTests {
+  @Test func weight() throws {
+    let tally = try tally("$w = 3\n_ = (? $w a b)")
+    #expect(near(tally["a"], 3 / 4))
+  }
+
+  @Test func repeatCount() throws {
+    #expect(try words("$n = 2\n_ = (+ $n a)") == ["a", "aa"])
+  }
+
+  @Test func override() throws {
+    #expect(try words("$n = 2\n_ = (+ $n a)", overrides: ["n": 3]) == ["a", "aa", "aaa"])
+  }
+
+  @Test func overrideToZeroDisablesAnAlternative() throws {
+    #expect(try words("$w = 3\n_ = (? $w a b)", overrides: ["w": 0]) == ["b"])
+  }
+
+  @Test func declarationsCanComeAfterProductions() throws {
+    #expect(try words("_ = (+ $n a)\n$n = 2") == ["a", "aa"])
+  }
+
+  @Test func scriptListsItsVariables() throws {
+    let script = try Script("$a = 1\n$b = 255\n$c = 256\n_ = x")
+    #expect(script.variables == ["a": 1, "b": 255])
+  }
+}
+
+struct RandomnessTests {
+  @Test func sameSeedSameWords() throws {
+    let generator = try Generator("_ = (+ *ptk *aeiou 3 (+ *ptk *aeiou))")
+    var first = SplitMix64(seed: 42)
+    var second = SplitMix64(seed: 42)
+    let a = try (0..<20).map { _ in try generator.generate(using: &first) }
+    let b = try (0..<20).map { _ in try generator.generate(using: &second) }
+    #expect(a == b)
+    #expect(Set(a).count > 1)
+  }
+
+  @Test func systemRandom() throws {
+    let generator = try Generator("_ = *abc")
+    #expect(["a", "b", "c"].contains(try generator.generate()))
+  }
+}
