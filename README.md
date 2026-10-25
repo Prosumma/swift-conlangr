@@ -228,9 +228,41 @@ Some grammars can only be judged by running them, so `generate()` has two safegu
 
 Generation doesn't recurse, so no grammar can overflow the stack while generating, however much its productions refer to each other.
 
+## Writing grammars
+
+### Idealize first, spell last
+
+Write the grammar in an idealized form, with one symbol per sound, and turn it into the real spelling with substitutions at the very end, on the outermost concat. Any symbol will do, as long as the final substitutions replace it.
+
+```
+_ = (+ &word
+  > *nr*=ðr                      ; sound changes see one symbol per sound
+    *au=aw                       ; spelling conventions come after them
+    *þ*=th *ð*=dh *χ*=ch)        ; and digraphs are spelled out last
+```
+
+Spelling breaks patterns. Once *ph* is written as two letters, `*np*` matches *n* followed by *ph*, and a test for the voiceless *hw* finds it in *thw*. With φ for *ph* and þ for *th* until the end, every rule matches what it means. Conventions such as writing a final *au* as *aw* also belong at the end, after the rules that might create or destroy an *au*. The Sindarin example works this way.
+
+### Fill in a placeholder with a local rewrite
+
+Rewrites apply only to the concat they're attached to, so wrapping a production in a concat gives it rewrites of its own. Combined with a placeholder, that lets one definition take several forms. The Proto-Indo-European example writes each root once, with `·` in place of its vowel, and fills in the vowel to suit each use:
+
+```
+accentedRoot = (? 2 (+ &root > *·*=é) 1 (+ &root > *·*=ó))
+zeroRoot = (+ &root > *·r*=r̥ *·n*=n̥ *·*=_)
+```
+
+### Build agreement into the grammar
+
+A rewrite can't depend on what else is in the word, so it can't enforce agreement between distant parts, such as vowel or consonant harmony. Instead, build each kind of word separately, from parts that agree. The Diné Bizaad example keeps two series of sibilants apart by having separate productions for words with front sibilants, words with back sibilants, and words with neither.
+
+### Name things instead of nesting them
+
+A reference doesn't count toward the nesting limit, and a name documents what a group is for. When a production gets hard to read, move its inner groups into productions of their own.
+
 ## More examples
 
-The unit tests in `Tests/ConlangrTests/ExampleTests.swift` include grammars inspired by Old Norse, Polynesian, Sinitic, Klingon, Sumerian, and Quenya. Two fuller ones use variables, skips, and substitutions: `Tests/ConlangrTests/DineBizaadTests.swift`, inspired by Diné Bizaad (Navajo), builds sibilant harmony into the grammar, and `Tests/ConlangrTests/IndoEuropeanTests.swift`, inspired by Proto-Indo-European, models ablaut, laryngeal coloring, and root constraints. Here is the Klingon one:
+The unit tests in `Tests/ConlangrTests/ExampleTests.swift` include grammars inspired by Old Norse, Polynesian, Sinitic, Klingon, Sumerian, and Quenya. Three fuller ones use variables, skips, and substitutions: `Tests/ConlangrTests/DineBizaadTests.swift`, inspired by Diné Bizaad (Navajo), builds sibilant harmony into the grammar; `Tests/ConlangrTests/IndoEuropeanTests.swift`, inspired by Proto-Indo-European, models ablaut, laryngeal coloring, and root constraints; and `Tests/ConlangrTests/SindarinTests.swift`, inspired by Tolkien's Sindarin, forms plurals by changing vowels, and writes each digraph as a single letter until a final substitution spells it out. Here is the Klingon one:
 
 ```
 C = (? b D g H j l m n p q Q r S t v w y %'   ; base consonants

@@ -17,57 +17,65 @@ import Testing
 /// - Vowels next to n or m are nasal, but they aren't written that way.
 /// - The voiced velar fricative is written gh before a, y before i and e, and w before o.
 /// - A syllabic n can start a verb, before a consonant it can join, as in "ndi" or "nts'ískees".
+///
+/// The grammar writes each sound as one symbol, and spells the orthography out at the end.
 struct DineBizaadTests {
   static let source = """
     ; Inspired by Diné Bizaad (Navajo). Words with no sibilants, words with
-    ; front sibilants (s z ts ts' dz), and words with back sibilants (sh zh
-    ; ch ch' j) are built separately, so the two series never mix.
+    ; front sibilants (s z ʦ ʦʼ ʣ), and words with back sibilants (ʃ ʒ ʧ ʧʼ j)
+    ; are built separately, so the two series never mix.
+    ;
+    ; Each sound is one symbol until the end, when the spelling is filled in:
+    ; ʔ is the glottal stop and ʼ marks an ejective (both written '), and
+    ; ʃ ʒ ʧ ʦ ʣ ƛ λ ɣ ʍ kʷ are sh zh ch ts dz tł dl gh hw kw.
 
     $prefixes = 3     ; the most prefixes a verb can have
     $nasality = 2     ; how often a stem vowel is nasal, out of 8
 
     _ = (+ (? 4 &plainWord 2 &frontWord 2 &backWord)
-      - nn* nm* n%'* nh* ny* nw* nb* ng* nk*  ; a syllabic n needs a consonant it can join
-      > *ghi*=yi *ghí*=yí *ghį*=yį *ghį́*=yį́    ; gh is written y before i and e,
-        *ghe*=ye *ghé*=yé *ghę*=yę *ghę́*=yę́
-        *gho*=wo *ghó*=wó *ghǫ*=wǫ *ghǫ́*=wǫ́)   ; and w before o
+      - nn* nm* nʔ* nh* nʍ* ny* nw* nb* ng* nɣ* nk*  ; a syllabic n needs a consonant it can join
+      > *ɣi*=yi *ɣí*=yí *ɣį*=yį *ɣį́*=yį́     ; ɣ is written y before i and e,
+        *ɣe*=ye *ɣé*=yé *ɣę*=yę *ɣę́*=yę́
+        *ɣo*=wo *ɣó*=wó *ɣǫ*=wǫ *ɣǫ́*=wǫ́     ; w before o,
+        *ɣ*=gh                              ; and gh before a
+        *ʔ*=%' *ʼ*=%' *ʃ*=sh *ʒ*=zh *ʧ*=ch *ʦ*=ts *ʣ*=dz *ƛ*=tł *λ*=dl *ʍ*=hw *kʷ*=kw)
 
     ; A noun is a stem, with or without a possessor. A verb is one or more
-    ; prefixes and a stem. Before a front sibilant, "my" is si-, not shi-.
-    ; Before a back sibilant, the perfective prefix is shi-, not si-.
+    ; prefixes and a stem. Before a front sibilant, "my" is si-, not ʃi-.
+    ; Before a back sibilant, the perfective prefix is ʃi-, not si-.
     plainWord = (?
-      2 (+ (? 3 _ 3 &possessor 2 shi) &plainStem)
+      2 (+ (? 3 _ 3 &possessor 2 ʃi) &plainStem)
       3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 si) &plainStem))
     frontWord = (?
       2 (+ (? 3 _ 3 &possessor 2 si) &frontStem)
-      3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 si 1 dzi) &frontStem))
+      3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 si 1 ʣi) &frontStem))
     backWord = (?
-      2 (+ (? 3 _ 3 &possessor 2 shi) &backStem)
-      3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 shi 1 ji) &backStem))
+      2 (+ (? 3 _ 3 &possessor 2 ʃi) &backStem)
+      3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 ʃi 1 ji) &backStem))
 
-    possessor = (? 3 bi 2 ni 2 %'a 1 ha)   ; his or her, your, someone's, its
+    possessor = (? 3 bi 2 ni 2 ʔa 1 ha)   ; his or her, your, someone's, its
     syllabicN = (? 9 _ 1 n)
 
     ; Prefixes are CV, with low tone and a short oral vowel, most often i.
-    prefix = (? 3 na 3 ni 3 di 3 yi 2 bi 2 da 2 ha 1 ho 1 %'a
+    prefix = (? 3 na 3 ni 3 di 3 yi 2 bi 2 da 2 ha 1 ho 1 ʔa
       4 (+ &C (? 4 i 2 a 1 e 1 o)))
 
     ; Stems. After n or m, a vowel is written without its nasal hook.
     plainStem = (? 4 (+ &C &rhyme) 1 (+ &nasal &oralRhyme))
     frontStem = (? 3 (+ &front &rhyme) 1 (+ &C &vowel *sz) 1 (+ &front &vowel *sz))
     backStem = (? 3 (+ &back &rhyme) 1 (+ &C &vowel &backCoda) 1 (+ &back &vowel &backCoda))
-    backCoda = (? 3 sh 1 zh)
+    backCoda = (? 3 ʃ 1 ʒ)
 
     rhyme = (? 4 &vowel 3 (+ &vowel &coda) 1 (+ &oral n) 1 &diphthong)
     oralRhyme = (? 4 &oral 3 (+ &oral &coda) 1 (+ &oral n))
-    coda = (? 4 %' 3 h 2 d 2 l 3 ł)
+    coda = (? 4 ʔ 3 h 2 d 2 l 3 ł)
 
     ; Consonants other than sibilants and nasals: mostly coronal, few labials.
-    C = (? 6 d 5 t 6 h 4 y 5 %' 4 ł 3 l 4 g 2 k 2 t%' 2 k%' 2 tł 1 tł%' 1 dl
-      2 gh 1 hw 1 kw 1 w 3 b)
+    C = (? 6 d 5 t 6 h 4 y 5 ʔ 4 ł 3 l 4 g 2 k 2 tʼ 2 kʼ 2 ƛ 1 ƛʼ 1 λ
+      2 ɣ 1 ʍ 1 kʷ 1 w 3 b)
     nasal = (? 6 n 1 m)
-    front = (? 4 s 3 ts 2 ts%' 2 dz 1 z)
-    back = (? 4 sh 3 ch 2 ch%' 2 j 1 zh)
+    front = (? 4 s 3 ʦ 2 ʦʼ 2 ʣ 1 z)
+    back = (? 4 ʃ 3 ʧ 2 ʧʼ 2 j 1 ʒ)
 
     ; Vowels are short or long, with low or high tone. Only long vowels can
     ; rise (aá) or fall (áa).

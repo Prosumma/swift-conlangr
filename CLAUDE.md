@@ -80,6 +80,15 @@ No input may crash the process, including on a secondary thread's 512 KB stack.
 - Error tests compare `Diagnostic.description` strings, so they cover the message, the line, and the column together. When you change a message, update `README.md` too if it quotes the message.
 - To check a question about semantics, add a throwaway `@Test` that tallies samples, run it, and delete it.
 
+## Example grammars
+
+The language examples (`ExampleTests.swift` for the short ones, plus `DineBizaadTests.swift`, `IndoEuropeanTests.swift` and `SindarinTests.swift`) double as documentation of good grammar-writing, so new ones should follow the same conventions:
+
+- **Idealize first, spell last.** Write the grammar with one symbol per sound, and turn it into the real orthography with substitutions at the very end of the outermost concat. Digraphs written early make patterns misfire (`*np*` matching *n* + *ph*). See README "Writing grammars", which also covers placeholders filled by local rewrites and agreement built into the grammar.
+- **Test the rules, not just the inventory.** Each example checks its language's rules over 2,000 words from a fixed seed. The inventory test also catches placeholders that leak into the output. A test of the output sees the spelled form, so it has to allow for digraphs itself.
+- **Check more than one seed** before settling on one, and look at a sample of words, since a grammar can pass every test and still not look like the language.
+- **Say what it's based on.** The doc comment names the sources and the rules modeled, and the grammar's own comments explain each part.
+
 ## Style
 
 - 2-space indentation, as formatted by `swift format` with its default configuration.
