@@ -5,19 +5,19 @@ Conlangr is a small domain-specific language for generating random words for con
 You describe a language's sound inventory and syllable structure as a set of named productions. Conlangr then generates as many plausible-looking words as you want:
 
 ```
-; Quenya-ish
-initialc = *ptkmnsrly
-medialc  = (? mp nt nk ld rd ny ry ly nd mb)
-finalc   = *nrlmt
-vowel    = *aeiou
-middle   = (+ &vowel &medialc)
-final    = (? 2 &vowel (+ &vowel &finalc))
-_        = (+ &initialc 2 &middle &final - *yi*)
+; A small Elvish-sounding language
+C   = *tttkkpmnnnllrrsvh
+V   = (? 4 a 3 e 3 i 2 o 1 u 1 ai)
+syl = (? 3 (+ &C &V) 1 (+ &C &V *nlrs))
+_   = (+ (? 2 &V 3 _) &syl 2 &syl (? 8 _ 1 (+ *lnr ion) 1 ndil 1 wen)
+        - *ii* *uu* > *k*=c)
 ```
 
 ```
-merderde  neldan  kuryaryal  linde  pulyen  sumpumbo  rinkentir  piryante
+rainai  ilono  tisicendil  esinarion  amoso  atine  ivecil  cavamandil
 ```
+
+For fuller grammars, see [More examples](#more-examples).
 
 ## Installation
 
@@ -262,21 +262,21 @@ A reference doesn't count toward the nesting limit, and a name documents what a 
 
 ## More examples
 
-The unit tests in `Tests/ConlangrTests/ExampleTests.swift` include grammars inspired by Old Norse, Polynesian, Sinitic, Klingon, Sumerian, and Quenya. Three fuller ones use variables, skips, and substitutions: `Tests/ConlangrTests/DineBizaadTests.swift`, inspired by Diné Bizaad (Navajo), builds sibilant harmony into the grammar; `Tests/ConlangrTests/IndoEuropeanTests.swift`, inspired by Proto-Indo-European, models ablaut, laryngeal coloring, and root constraints; and `Tests/ConlangrTests/SindarinTests.swift`, inspired by Tolkien's Sindarin, forms plurals by changing vowels, and writes each digraph as a single letter until a final substitution spells it out. Here is the Klingon one:
+Each of these test files holds a grammar for a language inspired by a real or invented one, with tests that check it follows that language's rules. They're written the way [Writing grammars](#writing-grammars) recommends, and each one's comments explain what it models and where that comes from.
 
-```
-C = (? b D g H j l m n p q Q r S t v w y %'   ; base consonants
-    1 ch 1 gh 1 tlh 1 ng)                    ; multigraphs
-F = (? 3 b 3 D 3 g 3 H 3 j 3 l 3 m 3 n 3 p 3 q 3 Q 3 r 3 S 3 t 3 v 3 w 3 y
-    1 ch 1 gh 1 tlh 1 ng)
-V = *aeIoU
+| File | Inspired by | Shows |
+|---|---|---|
+| `QuenyaTests.swift` | Tolkien's Quenya | Diaeresis and c/qu/x spelled at the end; plurals in -r and -i by ordered substitutions |
+| `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest; digraphs as single letters |
+| `OldNorseTests.swift` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
+| `IndoEuropeanTests.swift` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
+| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as ordered substitutions, checked against real cognates |
+| `SiniticTests.swift` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
+| `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
+| `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |
+| `SumerianTests.swift` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes |
 
-S = (? 3 &CVC &CV)              ; favor closed syllables
-CV = (+ &C &V)
-CVC = (+ &C &V &F)
-
-_ = (+ &S 2 &S)
-```
+They're all in `Tests/ConlangrTests`.
 
 ## License
 

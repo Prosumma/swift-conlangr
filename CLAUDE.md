@@ -82,7 +82,7 @@ No input may crash the process, including on a secondary thread's 512 KB stack.
 
 ## Example grammars
 
-The language examples (`ExampleTests.swift` for the short ones, plus `DineBizaadTests.swift`, `IndoEuropeanTests.swift` and `SindarinTests.swift`) double as documentation of good grammar-writing, so new ones should follow the same conventions:
+The language examples, one per file (`QuenyaTests.swift`, `SindarinTests.swift`, `OldNorseTests.swift`, `IndoEuropeanTests.swift`, `PolynesianTests.swift`, `SiniticTests.swift`, `DineBizaadTests.swift`, `KlingonTests.swift`, `SumerianTests.swift`), double as documentation of good grammar-writing. README "More examples" lists them, so add new ones there too. New ones should follow the same conventions:
 
 - **Idealize first, spell last.** Write the grammar with one symbol per sound, and turn it into the real orthography with substitutions at the very end of the outermost concat. Digraphs written early make patterns misfire (`*np*` matching *n* + *ph*). See README "Writing grammars", which also covers placeholders filled by local rewrites and agreement built into the grammar.
 - **Test the rules, not just the inventory.** Each example checks its language's rules over 2,000 words from a fixed seed. The inventory test also catches placeholders that leak into the output. A test of the output sees the spelled form, so it has to allow for digraphs itself.
