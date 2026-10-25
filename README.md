@@ -230,7 +230,7 @@ Generation doesn't recurse, so no grammar can overflow the stack while generatin
 
 ## More examples
 
-The unit tests in `Tests/ConlangrTests/ExampleTests.swift` include grammars inspired by Old Norse, Polynesian, Sinitic, Klingon, Sumerian, and Quenya. Here is the Klingon one:
+The unit tests in `Tests/ConlangrTests/ExampleTests.swift` include grammars inspired by Old Norse, Polynesian, Sinitic, Klingon, Sumerian, and Quenya. `Tests/ConlangrTests/DineBizaadTests.swift` has a fuller one inspired by Diné Bizaad (Navajo), which uses variables, skips, and substitutions, and builds sibilant harmony into the grammar. Here is the Klingon one:
 
 ```
 C = (? b D g H j l m n p q Q r S t v w y %'   ; base consonants
