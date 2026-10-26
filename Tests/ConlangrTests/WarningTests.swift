@@ -9,7 +9,7 @@ struct WarningTests {
   @Test(arguments: [
     QuenyaTests.source, SindarinTests.source, OldNorseTests.source, IndoEuropeanTests.source,
     PolynesianTests.source, SiniticTests.source, DineBizaadTests.source, KlingonTests.source,
-    SumerianTests.source,
+    SumerianTests.source, ThelimuTests.source,
   ])
   func examplesHaveNone(source: String) throws {
     #expect(try warnings(source) == [])

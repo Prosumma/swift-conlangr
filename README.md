@@ -409,7 +409,7 @@ A reference doesn't count toward the nesting limit, and a name documents what a 
 
 ## More examples
 
-Each of these test files holds a grammar for a language inspired by a real or invented one, with tests that check it follows that language's rules. They're written the way [Writing grammars](#writing-grammars) recommends, and each one's comments explain what it models and where that comes from.
+Each of these test files holds a grammar for a language inspired by a real or fictional one, or in Thelimu's case made up from scratch, with tests that check it follows that language's rules. They're written the way [Writing grammars](#writing-grammars) recommends, and each one's comments explain what it models and where that comes from.
 
 | File | Inspired by | Shows |
 |---|---|---|
@@ -422,6 +422,7 @@ Each of these test files holds a grammar for a language inspired by a real or in
 | `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
 | `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |
 | `SumerianTests.swift` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes; plurals by reduplication |
+| `ThelimuTests.swift` | Nothing: invented for Conlangr | Vowel harmony chosen by a select with rule sets; consonant mutation after prefixes; Grassmann's law; reduplication; each part of speech a place to start |
 
 They're all in `Tests/ConlangrTests`.
 
