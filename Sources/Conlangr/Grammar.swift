@@ -157,7 +157,7 @@ enum Grammar {
 
   static let variableDefinition =
     tuple(
-      variableName <* gap <* char("=") <* gap,
+      variableName.captured().map { Located($0.value, $1) } <* gap <* char("=") <* gap,
       digits.captured().map { Located($0, $1) }.expecting("Expected a number after \"=\".")
     )
     .map { Definition.variable(name: $0, value: $1) }

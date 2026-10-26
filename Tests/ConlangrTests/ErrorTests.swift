@@ -290,7 +290,7 @@ struct CompileErrorTests {
   @Test func duplicateVariableIsStillChecked() {
     #expect(
       messages("$n = 1\n$n = 999\n_ = a") == [
-        "2:2: The variable \"$n\" is already declared.",
+        "2:1: The variable \"$n\" is already declared.",
         "2:6: 999 is too large. Weights, repeat counts and variables go up to 255.",
       ])
   }
@@ -304,7 +304,7 @@ struct CompileErrorTests {
   }
 
   @Test func duplicateVariable() {
-    #expect(messages("$n = 1\n$n = 2\n_ = a") == ["2:2: The variable \"$n\" is already declared."])
+    #expect(messages("$n = 1\n$n = 2\n_ = a") == ["2:1: The variable \"$n\" is already declared."])
   }
 
   @Test func numberTooLarge() {

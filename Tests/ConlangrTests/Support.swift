@@ -64,3 +64,8 @@ func diagnostics(_ source: String, overrides: [String: UInt8] = [:]) -> [Diagnos
 func messages(_ source: String, overrides: [String: UInt8] = [:]) -> [String] {
   diagnostics(source, overrides: overrides).map(\.description)
 }
+
+/// Each warning as `line:column: message`.
+func warnings(_ source: String) throws -> [String] {
+  try Generator(source).warnings.map(\.description)
+}

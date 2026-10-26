@@ -32,6 +32,7 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 | `Sources/Conlangr/Script.swift` | Public `Script` (parse, `compile(overrides:)`) and the internal `Compiler` |
 | `Sources/Conlangr/Generator.swift` | Public `Generator`, the compiled `Node` form, and the evaluator |
 | `Sources/Conlangr/Errors.swift` | Public `ScriptError`, `Diagnostic`, `Diagnostic.Problem`, `SourceLocation`, `GenerationError` |
+| `Sources/Conlangr/Warnings.swift` | Public `Warning` and `Warning.Problem`, and the pass that finds them |
 | `Sources/Conlangr/Tokens.swift` | Public `Token` and `tokenize(_:)`, a separate lexer for syntax highlighting |
 
 ## Pipeline
@@ -40,6 +41,7 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 
 - **Parsing** (`Grammar`) produces a syntax tree that records what was written: numbers stay as digit strings, names aren't resolved, and anything a diagnostic could point at is `Located`. A syntax error becomes a `ScriptError` with a single `.syntax` diagnostic. Before parsing, `Script.checkNesting` rejects groups nested too deeply, also with a single diagnostic (see "Stack safety").
 - **Compiling** (`Compiler`) resolves variables and names, lowers the tree to `Node`s, and collects *every* problem as a `Diagnostic` before throwing. Lowering always returns a node, using a placeholder after an error, so it can keep going and find more. The termination check runs only when nothing else is wrong. Rule sets are compiled once each, before any production, including those nothing uses, so their problems are reported once. Their rewrites are spliced into each sequence that uses them, so `Node` has no notion of a rule set. Splicing copies, so `Generator.maximumRewrites` caps a sequence's or rule set's rewrites: rule sets that each use the one before twice would otherwise double with every level.
+- **Warnings** come from a separate pass over the syntax tree, after compiling succeeds, and end up in `Generator.warnings`. They're never computed for a script that fails to compile, so they can't repeat or contradict a diagnostic. Since any production can be a starting point, "unused" means nothing else refers to it, not that `_` can't reach it.
 - **Generating** (`Evaluation`) walks the `Node`s.
 
 The public API never exposes Parsimonious types. Keep it that way, so that Parsimonious can change without breaking Conlangr's users.

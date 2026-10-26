@@ -159,7 +159,7 @@ struct Compiler {
     guard diagnostics.isEmpty, let main else {
       throw ScriptError(diagnostics: diagnostics.sorted(by: Compiler.sourceOrder))
     }
-    return Generator(rules: rules, main: main)
+    return Generator(rules: rules, main: main, warnings: warnings(for: definitions))
   }
 
   // MARK: Lowering

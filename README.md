@@ -69,6 +69,17 @@ A syntax error stops parsing, so it's always the only diagnostic. So is nesting 
 
 `generate()` throws a `GenerationError` when a word gets too long or takes too many steps (see [Limits](#limits)).
 
+### Warnings
+
+A script that compiles can still have mistakes in it. `Generator.warnings` lists the ones Conlangr can spot, in source order. Each `Warning` has a `problem` and a `location`, and its `description` reads like a diagnostic's:
+
+```
+4:1: Nothing refers to the production "vowl".
+7:14: Nothing in the script produces "h", so this can never match.
+```
+
+The `Warning.Problem` cases are listed in [Checks](#checks).
+
 ## The language
 
 A script is a list of definitions in any order. Most definitions assign a production to a name:
@@ -285,6 +296,17 @@ Compiling catches these problems before any word is generated, each reported as 
 | `neverFinishes` | `a = (+ x &a)`, which can only ever produce more of itself |
 
 A syntax error is reported as `syntax`, with a message saying what was expected, and groups nested too deeply as `nestedTooDeeply`.
+
+Compiling also finds things that are probably mistakes but don't stop the script working. They're reported as `Generator.warnings`, each a `Warning.Problem`:
+
+| Problem | Example |
+|---|---|
+| `unusedProduction` | `x = …` when nothing else refers to `&x` |
+| `unusedVariable` | `$n = …` when no weight or repeat count uses `$n` |
+| `unusedRuleSet` | `@r = (…)` when no concat or other rule set uses `@r` |
+| `cannotMatch` | `> sh=š` when nothing in the script produces an `h`, so the substitution never happens |
+
+Anything else that refers to a production, variable or rule set counts as using it, even if it's unused itself. So productions that only refer to each other get no warning, even if `_` can't reach them, since you might start generating from one of them. A character can be produced if any literal, spread or replacement has it, or if one of them can form it by joining onto the character before it, as Hangul jamo join into a syllable. In a class, each alternative is checked on its own, so `- *{a x}*` warns about `x` if nothing produces one, even though `a` can still match.
 
 ## Limits
 

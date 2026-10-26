@@ -8,6 +8,9 @@ public struct Generator: Sendable {
   let rules: [Node]
   /// The index of `_`.
   let main: Int
+  /// Things in the script that are probably mistakes, but didn't stop it compiling, in source
+  /// order.
+  public let warnings: [Warning]
 
   /// The longest text that a literal, a pattern, a replacement, or anything generated may be.
   public static let maximumLength = 64
@@ -24,9 +27,10 @@ public struct Generator: Sendable {
     self = try Script(source).compile(overrides: overrides)
   }
 
-  init(rules: [Node], main: Int) {
+  init(rules: [Node], main: Int, warnings: [Warning]) {
     self.rules = rules
     self.main = main
+    self.warnings = warnings
   }
 
   /// Generates a random word.
