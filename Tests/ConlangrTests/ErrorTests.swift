@@ -47,18 +47,9 @@ struct SyntaxErrorTests {
     ("_ = (? a\n  b", "2:4: Expected \")\"."),
     ("_ = (? a = b)", "1:10: Expected \")\"."),
     ("_ = (? 3)", "1:9: Expected a production after the quantifier."),
-    (
-      "_ = (? a - b)",
-      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
-    ),
-    (
-      "_ = (? a > b=c)",
-      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
-    ),
-    (
-      "_ = (? a @x)",
-      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
-    ),
+    ("_ = (? a - )", "1:12: Expected a pattern after \"-\"."),
+    ("_ = (? a > b=c d)", "1:17: Expected \"=\"."),
+    ("_ = (? a - b c", "1:15: Expected \")\"."),
     ("_ = (+ a @)", "1:11: Expected a rule set name after \"@\"."),
     ("_ = (+ a ^)", "1:11: Expected a production name after \"^\"."),
     ("_ = (+ a - *a*@x)", "1:15: Patterns must be separated by whitespace."),

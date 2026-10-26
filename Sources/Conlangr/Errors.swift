@@ -71,7 +71,7 @@ extension Diagnostic {
     case nothingToCopy(String)
     /// A rule set includes itself, directly or through other rule sets.
     case ruleSetIncludesItself(String)
-    /// A sequence or rule set has more than `Generator.maximumRewrites` skips and substitutions,
+    /// A group or rule set has more than `Generator.maximumRewrites` skips and substitutions,
     /// counting those of the rule sets it uses.
     case tooManyRewrites
     /// `Script.compile(overrides:)` was given a variable that the script doesn't declare.

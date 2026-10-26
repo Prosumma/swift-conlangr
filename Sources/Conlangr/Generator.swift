@@ -19,10 +19,13 @@ public struct Generator: Sendable {
   /// The number of steps one word may take. Each reference, each select, and each attempt at
   /// a sequence (including attempts that a skip rejects) is a step.
   public static let maximumSteps = 65_535
-  /// The number of skips and substitutions one sequence may have, counting those of the rule
-  /// sets it uses. Without a limit, rule sets that each use the one before twice would double
-  /// with every one.
+  /// The number of skips and substitutions one group or rule set may have, counting those of
+  /// the rule sets it uses. Without a limit, rule sets that each use the one before twice would
+  /// double with every one.
   public static let maximumRewrites = 1_024
+  /// The number of words in a row that `generate(count:distinct:)` may generate without finding
+  /// a new one, when it's asked for distinct words, before it gives up.
+  public static let maximumDuplicates = 1_000
 
   /// Parses and compiles `source`. See `Script.compile(overrides:)`.
   public init(_ source: String, overrides: [String: UInt8] = [:]) throws(ScriptError) {
@@ -66,6 +69,40 @@ public struct Generator: Sendable {
     var evaluation = Evaluation(rules: rules, random: generator)
     defer { generator = evaluation.random }
     return try evaluation.produce(rules[main])
+  }
+
+  /// Generates `count` random words. See `generate(count:distinct:using:)`.
+  public func generate(count: Int, distinct: Bool = false) throws(GenerationError) -> [String] {
+    var generator = SystemRandomNumberGenerator()
+    return try generate(count: count, distinct: distinct, using: &generator)
+  }
+
+  /// Generates `count` random words, in the order they were generated, using `generator` as the
+  /// source of randomness.
+  ///
+  /// If `distinct` is true, no word appears twice. A script may not be able to produce that
+  /// many different words, or may produce some of them only rarely, so this gives up after
+  /// `maximumDuplicates` words in a row that it had already generated, and returns fewer.
+  ///
+  /// `count` must not be negative. A negative count is a programming error, and stops the
+  /// program, as it does for `Array(repeating:count:)`.
+  public func generate<R: RandomNumberGenerator>(
+    count: Int, distinct: Bool = false, using generator: inout R
+  ) throws(GenerationError) -> [String] {
+    precondition(count >= 0, "The count of words can't be negative.")
+    var words: [String] = []
+    var seen: Set<String> = []
+    var duplicates = 0
+    while words.count < count && duplicates < Generator.maximumDuplicates {
+      let word = try generate(using: &generator)
+      if !distinct || seen.insert(word).inserted {
+        words.append(word)
+        duplicates = 0
+      } else {
+        duplicates += 1
+      }
+    }
+    return words
   }
 }
 

@@ -197,15 +197,31 @@ struct Compiler {
       let alternatives = elements.map { Choice.Alternative(weight: 1, node: .literal($0)) }
       // The grammar requires at least one element, so this always succeeds.
       return Choice(alternatives).map { .choice($0) } ?? .literal("")
-    case .select(let items):
+    case .select(let items, let steps):
+      // A skip has to be able to start again, so a select with rewrites becomes a sequence with
+      // the select as its only item. That sequence is on the evaluator's stack, so copies
+      // inside the select must count it.
+      if !steps.isEmpty {
+        sequences.append(SequenceScope())
+      }
       let alternatives = items.map { item in
         Choice.Alternative(weight: Int(quantity(of: item) ?? 1), node: lower(item.expression))
       }
+      if !steps.isEmpty {
+        sequences.removeLast()
+      }
+      let rewrites = rewrites(steps)
       guard let choice = Choice(alternatives) else {
         report(.noChoosableAlternative, at: expression.range)
         return .literal("")
       }
-      return .choice(choice)
+      guard !steps.isEmpty else {
+        return .choice(choice)
+      }
+      guard let rewrites, let item = Repetition(maximum: 1, node: .choice(choice)) else {
+        return .literal("")
+      }
+      return .sequence([item], rewrites)
     case .sequence(let items, let steps):
       sequences.append(SequenceScope())
       var repetitions = items.enumerated().compactMap { index, item -> Repetition? in

@@ -138,6 +138,42 @@ struct SelectTests {
   }
 }
 
+struct SelectRewriteTests {
+  @Test func substitution() throws {
+    #expect(try words("_ = (? ka ki > *i=e)") == ["ka", "ke"])
+  }
+
+  @Test func skipChoosesAgain() throws {
+    // The rejected alternative's weight goes to the others, in proportion.
+    let tally = try tally("_ = (? 2 a 1 b 3 c - c)")
+    #expect(tally["c"] == nil)
+    #expect(near(tally["a"], 2 / 3))
+    #expect(near(tally["b"], 1 / 3))
+  }
+
+  @Test func ruleSet() throws {
+    #expect(try words("@r = (> *i=e)\n_ = (? ki ku @r)") == ["ke", "ku"])
+  }
+
+  @Test func appliesOnlyToTheSelect() throws {
+    #expect(try words("_ = (+ i (? a b > *a=i))") == ["ii", "ib"])
+  }
+
+  @Test func appliesToWhicheverAlternativeWasChosen() throws {
+    #expect(try words("_ = (? (+ *pt a) (+ *pt e) > p*=b)") == ["ba", "ta", "be", "te"])
+  }
+
+  @Test func copyInsideSeesTheConcatAroundIt() throws {
+    // The select becomes a sequence of its own, which a copy has to count past.
+    #expect(try words("x = *pt\n_ = (+ &x (? ^x q - q))") == ["pp", "tt"])
+    #expect(try words("x = *pt\n_ = (+ &x (? (+ ^x q) r > *q=s))") == ["pps", "tts", "pr", "tr"])
+  }
+
+  @Test func copyFromInsideTheSelect() throws {
+    #expect(try words("x = *pt\n_ = (? (+ &x ^x) a > *a=e)") == ["pp", "tt", "e"])
+  }
+}
+
 struct SequenceTests {
   @Test func concatenates() throws {
     #expect(try word("_ = (+ a b c)") == "abc")
@@ -482,5 +518,62 @@ struct StartingTests {
     #expect(
       generator.warnings.map(\.description) == ["4:1: Nothing refers to the production \"verb\"."])
     #expect(generator.starting(at: "verb")?.warnings == generator.warnings)
+  }
+}
+
+struct CountTests {
+  @Test func generatesTheCount() throws {
+    let generator = try Generator("_ = *ab")
+    var random = SplitMix64(seed: 1)
+    let words = try generator.generate(count: 50, using: &random)
+    #expect(words.count == 50)
+    #expect(Set(words) == ["a", "b"])
+  }
+
+  @Test func sameWordsAsOneAtATime() throws {
+    let generator = try Generator("_ = (+ *ptk *aeiou 3 (+ *ptk *aeiou))")
+    var first = SplitMix64(seed: 3)
+    var second = SplitMix64(seed: 3)
+    let words = try generator.generate(count: 20, using: &first)
+    #expect(words == (try (0..<20).map { _ in try generator.generate(using: &second) }))
+  }
+
+  @Test func distinctKeepsTheFirstOfEach() throws {
+    let generator = try Generator("_ = (+ *ptk *aeiou)")
+    var first = SplitMix64(seed: 5)
+    var second = SplitMix64(seed: 5)
+    let words = try generator.generate(count: 10, distinct: true, using: &first)
+    var expected: [String] = []
+    while expected.count < 10 {
+      let word = try generator.generate(using: &second)
+      if !expected.contains(word) {
+        expected.append(word)
+      }
+    }
+    #expect(words == expected)
+  }
+
+  @Test func distinctGivesUpWhenThereAreNoMore() throws {
+    let generator = try Generator("_ = *abc")
+    var random = SplitMix64(seed: 1)
+    let words = try generator.generate(count: 10, distinct: true, using: &random)
+    #expect(words.count == 3)
+    #expect(Set(words) == ["a", "b", "c"])
+  }
+
+  @Test func zero() throws {
+    #expect(try Generator("_ = a").generate(count: 0) == [])
+    #expect(try Generator("_ = a").generate(count: 0, distinct: true) == [])
+  }
+
+  @Test func systemRandom() throws {
+    #expect(try Generator("_ = a").generate(count: 3) == ["a", "a", "a"])
+  }
+
+  @Test func throwsWhatGeneratingThrows() throws {
+    let generator = try Generator("_ = (+ k *ai - ka ki)")
+    #expect(throws: GenerationError.tooManySteps) {
+      try generator.generate(count: 2)
+    }
   }
 }

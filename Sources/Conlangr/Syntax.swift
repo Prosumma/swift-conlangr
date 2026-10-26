@@ -30,7 +30,7 @@ indirect enum Expression: Sendable {
   case copy(String)
   /// `*abc`. Each element is a single character, or the empty string for `_`.
   case spread([String])
-  case select([Item])
+  case select([Item], [Located<RewriteStep>])
   case sequence([Item], [Located<RewriteStep>])
 }
 
@@ -45,7 +45,7 @@ enum Quantifier: Sendable {
   case variable(String)
 }
 
-/// The steps of a sequence's or rule set's skips and substitutions, flattened in source order.
+/// The steps of a group's or rule set's skips and substitutions, flattened in source order.
 /// `- a b > c=d` is the same as `- a - b > c=d`.
 enum RewriteStep: Sendable {
   case reject(PatternSyntax)

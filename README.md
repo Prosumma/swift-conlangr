@@ -17,7 +17,7 @@ _   = (+ (? 2 &V 3 _) &syl 2 &syl (? 8 _ 1 (+ *lnr ion) 1 ndil 1 wen)
 rainai  ilono  tisicendil  esinarion  amoso  atine  ivecil  cavamandil
 ```
 
-For fuller grammars, see [More examples](#more-examples).
+For the whole language on one page, see [Quick reference](#quick-reference). For fuller grammars, see [More examples](#more-examples).
 
 ## Installation
 
@@ -54,6 +54,8 @@ for _ in 0..<10 {
 
 Then **`Generator.generate()`** produces one random word. A `Generator` is a `Sendable` value, and each call is independent. To make the output reproducible, pass your own seeded generator to `generate(using:)`.
 
+**`generate(count:distinct:)`** produces several words at once. With `distinct: true`, no word appears twice. A script might not be able to produce as many different words as you ask for, so after 1,000 words in a row that it had already produced (`Generator.maximumDuplicates`), it gives up and returns the ones it found. A negative count is a programming error, and stops the program.
+
 A generator starts from `_`, but any production can be a place to start. **`starting(at:)`** returns a generator that starts from the production you name, or `nil` if there's no such production, with `"_"` for the main one, and **`productions`** lists their names:
 
 ```swift
@@ -88,6 +90,43 @@ A script that compiles can still have mistakes in it. `Generator.warnings` lists
 ```
 
 The `Warning.Problem` cases are listed in [Checks](#checks).
+
+## Quick reference
+
+```
+; Definitions, in any order
+_ = …                   the main production, where generation starts
+name = …                a production
+$name = 3               a variable, for any weight or repeat count: $name
+@name = (- … > …)       a rule set, for any rewrites: @name
+
+; Productions
+abc                     text
+_                       nothing (but a_b and %_ are underscores)
+&name                   what the production name produces
+^name                   exactly what an earlier &name in this word produced
+*abc                    one of a, b and c
+(? 3 a 1 b)             one alternative, by weight (1 if left out)
+(+ a 3 b)               each item in order; 3 b is b one to three times
+
+; Rewrites, after the items of a select or concat
+- p1 p2                 skip: if the word matches, produce it again
+> p1=r1 p2=r2           substitute, one after another (r = _ deletes)
+@name                   the rule set's rewrites
+
+; Patterns
+abc  abc*  *abc  *abc*  the whole word, a prefix, a suffix, anywhere
+{a b}                   any of these, the longest first
+{}                      the same text as the class before
+*{k t}*={ʔ k}           a replacement's class maps its pattern class's
+*ɣ{i e}*=y{}            and {} copies what its pattern class matched
+*{⁰ ŋ}*={_ ng}          and a mapped alternative of _ deletes
+
+; Escapes
+%x                      x itself, for any reserved character, or %%
+                        reserved: ( ) { } [ ] + ? & - $ @ ! ^ * = ' " : ; # < > 0-9
+; a comment, to the end of the line
+```
 
 ## The language
 
@@ -127,7 +166,7 @@ A literal is a run of characters that aren't whitespace and aren't reserved. The
 ( ) { } [ ] + ? & - $ @ ! ^ * = ' " : ; # < > 0-9
 ```
 
-Several of them (`{ } [ ] @ ! ^ ' " : # <`) aren't used yet and are set aside for the future. To use a reserved character in a literal, or `%` itself, put `%` in front of it. For example, `%'` is an apostrophe, `%3` is the digit 3, and `%%` is a percent sign. **Digits must be escaped**, because bare digits are weights and repeat counts.
+Several of them (`[ ] ! ' " : # <`) aren't used yet and are set aside for the future. To use a reserved character in a literal, or `%` itself, put `%` in front of it. For example, `%'` is an apostrophe, `%3` is the digit 3, and `%%` is a percent sign. **Digits must be escaped**, because bare digits are weights and repeat counts.
 
 On its own, `_` means the empty string. Inside a longer literal, as in `a_b`, it's an ordinary underscore, and `%_` is always an underscore. Names follow the same rules, so `_` on its own can only name the main production. It can't name a variable or rule set, and `%_` can't name a production. Literals are Unicode-aware, so `ð`, `ʔ`, `ǫ`, and `tlh` are all fine.
 
@@ -174,9 +213,9 @@ A copy can have a weight or repeat count like any other item: `(+ &root 2 ^root)
 
 ### Rewrites: skips and substitutions
 
-After its items, a concat can have any number of **rewrite blocks**, which post-process the word it just built. The blocks run in the order they're written.
+After its items, a concat or select can have any number of **rewrite blocks**, which post-process the text it just produced. The blocks run in the order they're written. The examples here use concats, but everything works the same in a select.
 
-**Skips** (`- pattern …`) reject the word. If it matches any of the patterns, the whole concat is thrown away and generated again from scratch:
+**Skips** (`- pattern …`) reject the word. If it matches any of the patterns, the whole concat is thrown away and generated again from scratch. A select chooses again, so the alternatives that a skip rejects never come out, and the others keep their relative weights:
 
 ```
 _ = (+ &syl 4 &syl - *aa* *ii* *uu* *vf*)    ; no doubled vowels, no "vf"
@@ -205,7 +244,7 @@ Because the blocks run in order, a skip placed after a substitution sees the sub
 _ = (+ *ab > *a*=z - *z*)     ; always produces "b"
 ```
 
-Rewrites apply only to the concat they're attached to. To apply them to an entire word, attach them to the outermost concat.
+Rewrites apply only to the group they're attached to. To apply them to an entire word, attach them to the outermost group.
 
 #### Classes
 
@@ -235,7 +274,7 @@ Since a class maps every match in a single pass, it can express a chain shift, w
 
 #### Rule sets
 
-A **rule set** gives a name to skips and substitutions, so that more than one concat can use them. Define it with `@` and put its blocks in parentheses:
+A **rule set** gives a name to skips and substitutions, so that more than one group can use them. Define it with `@` and put its blocks in parentheses:
 
 ```
 @spelling = (> *ŋ*=ng *ʔ*=ʻ)
@@ -290,7 +329,7 @@ Compiling catches these problems before any word is generated, each reported as 
 | `undefinedRuleSet` | `@r` when there's no `@r = (…)` |
 | `nothingToCopy` | `(+ ^a &a)`, or a `^a` with no earlier `&a` in a concat around it |
 | `ruleSetIncludesItself` | `@r = (> a=b @r)`, or two rule sets that use each other |
-| `tooManyRewrites` | more than 1,024 skips and substitutions in one concat or rule set, counting those of the rule sets it uses |
+| `tooManyRewrites` | more than 1,024 skips and substitutions in one group or rule set, counting those of the rule sets it uses |
 | `unknownOverride` | an override for a variable the script doesn't declare |
 | `numberTooLarge` | a weight, repeat count, or variable above 255 |
 | `textTooLong` | a literal, pattern, or replacement longer than 64 characters |
@@ -313,7 +352,7 @@ Compiling also finds things that are probably mistakes but don't stop the script
 |---|---|
 | `unusedProduction` | `x = …` when nothing else refers to `&x` |
 | `unusedVariable` | `$n = …` when no weight or repeat count uses `$n` |
-| `unusedRuleSet` | `@r = (…)` when no concat or other rule set uses `@r` |
+| `unusedRuleSet` | `@r = (…)` when no group or other rule set uses `@r` |
 | `cannotMatch` | `> sh=š` when nothing in the script produces an `h`, so the substitution never happens |
 
 Anything else that refers to a production, variable or rule set counts as using it, even if it's unused itself. So productions that only refer to each other get no warning, even if `_` can't reach them, since you might start generating from one of them. A character can be produced if any literal, spread or replacement has it, or if one of them can form it by joining onto the character before it, as Hangul jamo join into a syllable. In a class, each alternative is checked on its own, so `- *{a x}*` warns about `x` if nothing produces one, even though `a` can still match.
@@ -327,12 +366,12 @@ inner = (? a b)
 _ = (+ x &inner y)      ; rather than (+ x (? a b) y), when the nesting gets deep
 ```
 
-A concat or rule set can have at most 1,024 skips and substitutions (`Generator.maximumRewrites`), counting those of the rule sets it uses. Rule sets can use each other as deeply as you like, but since each use stands for all of a rule set's rewrites, rule sets that each use the one before twice would otherwise double with every one.
+A group or rule set can have at most 1,024 skips and substitutions (`Generator.maximumRewrites`), counting those of the rule sets it uses. Rule sets can use each other as deeply as you like, but since each use stands for all of a rule set's rewrites, rule sets that each use the one before twice would otherwise double with every one.
 
 Some grammars can only be judged by running them, so `generate()` has two safeguards:
 
 - **Length.** Everything that's generated, including each part of a word along the way, must be at most 64 characters (`Generator.maximumLength`). Otherwise, `generate()` throws `GenerationError.tooLong`. The same limit applies to the source: a literal, a pattern's shortest match, and a replacement's longest result must all fit, so none of them can be too long to use.
-- **Steps.** Generating a word may take at most 65,535 steps (`Generator.maximumSteps`). Each reference, each select, and each attempt at a concat counts as a step, including attempts that a skip rejects. Otherwise, `generate()` throws `GenerationError.tooManySteps`. Usually this means a skip rejects every possible word, as in `(+ k *ai - ka ki)`, or a production refers to itself so often that it rarely finishes.
+- **Steps.** Generating a word may take at most 65,535 steps (`Generator.maximumSteps`). Each reference, each select, and each attempt at a concat counts as a step, including attempts that a skip rejects. A select with rewrites counts as a concat too. Otherwise, `generate()` throws `GenerationError.tooManySteps`. Usually this means a skip rejects every possible word, as in `(+ k *ai - ka ki)`, or a production refers to itself so often that it rarely finishes.
 
 Generation doesn't recurse, so no grammar can overflow the stack while generating, however much its productions refer to each other.
 
@@ -353,7 +392,7 @@ Spelling breaks patterns. Once *ph* is written as two letters, `*np*` matches *n
 
 ### Fill in a placeholder with a local rewrite
 
-Rewrites apply only to the concat they're attached to, so wrapping a production in a concat gives it rewrites of its own. Combined with a placeholder, that lets one definition take several forms. The Proto-Indo-European example writes each root once, with `·` in place of its vowel, and fills in the vowel to suit each use:
+Rewrites apply only to the group they're attached to, so wrapping a production in a concat gives it rewrites of its own. Combined with a placeholder, that lets one definition take several forms. The Proto-Indo-European example writes each root once, with `·` in place of its vowel, and fills in the vowel to suit each use:
 
 ```
 accentedRoot = (? 2 (+ &root > *·*=é) 1 (+ &root > *·*=ó))
@@ -366,7 +405,7 @@ A rewrite can't depend on what else is in the word, so it can't enforce agreemen
 
 ### Name things instead of nesting them
 
-A reference doesn't count toward the nesting limit, and a name documents what a group is for. When a production gets hard to read, move its inner groups into productions of their own. Likewise, when two concats need the same rewrites, give the rewrites a name with a rule set rather than repeating them.
+A reference doesn't count toward the nesting limit, and a name documents what a group is for. When a production gets hard to read, move its inner groups into productions of their own. Likewise, when two groups need the same rewrites, give the rewrites a name with a rule set rather than repeating them.
 
 ## More examples
 

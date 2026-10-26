@@ -81,14 +81,6 @@ enum Grammar {
   static let items = (item.expecting("Expected a production.") <* gap)+
 
   static let close = char(")")
-  static let misplacedRewrite: SourceParser<Character> =
-    char(anyOf: "->@").peek()
-    *> fail("Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...).")
-    .commit()
-  static let select =
-    (char("?") *> gap *> items.map { Expression.select($0) }
-    <* (close <|> misplacedRewrite).expecting("Expected \")\"."))
-    .commit1()
 
   /// `{a b c}`, a class, or `{}`, which repeats or copies another class.
   static let choice =
@@ -146,6 +138,10 @@ enum Grammar {
     .commit()
   static let steps = rejections <|> substitutions <|> (ruleSet <* gap).map { [$0] }
   static let rewrites = flatten(steps*)
+  static let select =
+    (char("?") *> gap *> tuple(items, rewrites).map { Expression.select($0, $1) }
+    <* close.expecting("Expected \")\"."))
+    .commit1()
   static let sequence =
     (char("+") *> gap *> tuple(items, rewrites).map { Expression.sequence($0, $1) } <* close)
     .commit1()

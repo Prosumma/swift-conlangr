@@ -135,8 +135,9 @@ private struct Usage {
       for element in elements {
         produce(element)
       }
-    case .select(let items):
+    case .select(let items, let steps):
       visit(items, in: owner)
+      visit(steps, in: owner)
     case .sequence(let items, let steps):
       visit(items, in: owner)
       visit(steps, in: owner)
