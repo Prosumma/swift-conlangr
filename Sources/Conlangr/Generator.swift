@@ -6,8 +6,10 @@
 public struct Generator: Sendable {
   /// The productions, which refer to each other by index.
   let rules: [Node]
-  /// The index of `_`.
+  /// The index of the production to start from: `_`, unless `starting(at:)` chose another.
   let main: Int
+  /// The index of each production, by name. The main production's name is empty.
+  let indices: [String: Int]
   /// Things in the script that are probably mistakes, but didn't stop it compiling, in source
   /// order.
   public let warnings: [Warning]
@@ -27,10 +29,27 @@ public struct Generator: Sendable {
     self = try Script(source).compile(overrides: overrides)
   }
 
-  init(rules: [Node], main: Int, warnings: [Warning]) {
+  init(rules: [Node], main: Int, indices: [String: Int], warnings: [Warning]) {
     self.rules = rules
     self.main = main
+    self.indices = indices
     self.warnings = warnings
+  }
+
+  /// The names of the productions, in the order they're defined, with `_` for the main one.
+  public var productions: [String] {
+    indices.sorted { $0.value < $1.value }.map { display($0.key) }
+  }
+
+  /// A generator that starts from the production named `name` instead of `_`, or `nil` if
+  /// there's no such production. `_` names the main production, since no other can have that
+  /// name. Every production can finish, so any of them can be a place to start.
+  public func starting(at name: String) -> Generator? {
+    // The main production's name is empty, but "" isn't a name that can be written.
+    guard !name.isEmpty, let index = indices[name == "_" ? "" : name] else {
+      return nil
+    }
+    return Generator(rules: rules, main: index, indices: indices, warnings: warnings)
   }
 
   /// Generates a random word.

@@ -395,6 +395,12 @@ struct VariableTests {
     #expect(try words("_ = (+ $n a)\n$n = 2") == ["a", "aa"])
   }
 
+  @Test func namesCanStartWithAnUnderscore() throws {
+    // Only "_" on its own means the empty string, so it's the only name that can't be used.
+    let source = "$_n = 2\n$%_ = 1\n@_r = (> *a*=b)\n_ = (+ $_n a $%_ c @_r)"
+    #expect(try words(source) == ["bc", "bbc"])
+  }
+
   @Test func scriptListsItsVariables() throws {
     let script = try Script("$a = 1\n$b = 255\n$c = 256\n_ = x")
     #expect(script.variables == ["a": 1, "b": 255])
@@ -415,5 +421,66 @@ struct RandomnessTests {
   @Test func systemRandom() throws {
     let generator = try Generator("_ = *abc")
     #expect(["a", "b", "c"].contains(try generator.generate()))
+  }
+}
+
+struct StartingTests {
+  static let source = """
+    _ = (+ &noun > p*=b)
+    noun = (+ &root (? _ s))
+    root = *pt
+    verb = (+ &root e)
+    """
+
+  @Test func startsFromTheNamedProduction() throws {
+    let generator = try #require(try Generator(Self.source).starting(at: "noun"))
+    var random = SplitMix64(seed: 1)
+    let words = Set(try (0..<200).map { _ in try generator.generate(using: &random) })
+    // The main production's substitution doesn't apply.
+    #expect(words == ["p", "t", "ps", "ts"])
+  }
+
+  @Test func canStartFromAProductionNothingRefersTo() throws {
+    let generator = try #require(try Generator(Self.source).starting(at: "verb"))
+    var random = SplitMix64(seed: 1)
+    let words = Set(try (0..<200).map { _ in try generator.generate(using: &random) })
+    #expect(words == ["pe", "te"])
+  }
+
+  @Test func underscoreIsTheMainProduction() throws {
+    let generator = try Generator("_ = *abcdefgh")
+    let main = try #require(generator.starting(at: "_"))
+    var first = SplitMix64(seed: 7)
+    var second = SplitMix64(seed: 7)
+    let a = try (0..<20).map { _ in try generator.generate(using: &first) }
+    let b = try (0..<20).map { _ in try main.generate(using: &second) }
+    #expect(a == b)
+  }
+
+  @Test func startingAgainIsFromTheNewProduction() throws {
+    let generator = try Generator(Self.source)
+    let verb = try #require(generator.starting(at: "noun")?.starting(at: "verb"))
+    #expect(try verb.generate().hasSuffix("e"))
+  }
+
+  @Test func unknownProductionIsNil() throws {
+    let generator = try Generator(Self.source)
+    #expect(generator.starting(at: "adjective") == nil)
+    #expect(generator.starting(at: "&noun") == nil)
+    // The main production's name is empty inside, but that isn't a name.
+    #expect(generator.starting(at: "") == nil)
+  }
+
+  @Test func listsTheProductionsInOrder() throws {
+    let generator = try Generator(Self.source)
+    #expect(generator.productions == ["_", "noun", "root", "verb"])
+    #expect(generator.starting(at: "verb")?.productions == generator.productions)
+  }
+
+  @Test func keepsTheWarnings() throws {
+    let generator = try Generator(Self.source)
+    #expect(
+      generator.warnings.map(\.description) == ["4:1: Nothing refers to the production \"verb\"."])
+    #expect(generator.starting(at: "verb")?.warnings == generator.warnings)
   }
 }

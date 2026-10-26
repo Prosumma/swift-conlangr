@@ -116,6 +116,10 @@ struct Compiler {
         }
         variables[name.value] = number
       case .production(let name, let expression):
+        if name.value == "_" {
+          // Still defined, so references to it aren't reported too.
+          report(.underscoreName, at: name.range)
+        }
         guard indices[name.value] == nil else {
           report(.duplicateProduction(name.value), at: name.range)
           duplicates.append(expression)
@@ -159,7 +163,8 @@ struct Compiler {
     guard diagnostics.isEmpty, let main else {
       throw ScriptError(diagnostics: diagnostics.sorted(by: Compiler.sourceOrder))
     }
-    return Generator(rules: rules, main: main, warnings: warnings(for: definitions))
+    return Generator(
+      rules: rules, main: main, indices: indices, warnings: warnings(for: definitions))
   }
 
   // MARK: Lowering

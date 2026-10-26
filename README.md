@@ -54,6 +54,15 @@ for _ in 0..<10 {
 
 Then **`Generator.generate()`** produces one random word. A `Generator` is a `Sendable` value, and each call is independent. To make the output reproducible, pass your own seeded generator to `generate(using:)`.
 
+A generator starts from `_`, but any production can be a place to start. **`starting(at:)`** returns a generator that starts from the production you name, or `nil` if there's no such production, with `"_"` for the main one, and **`productions`** lists their names:
+
+```swift
+let syllables = generator.starting(at: "syl")!
+print(try syllables.generate())          // A single syllable
+```
+
+Starting below `_` skips whatever `_` does around it, including its rewrites.
+
 There's also **`tokenize(_:)`**, which splits source text into `Token`s for syntax highlighting. Each token has a `kind`, a `value`, and a `range` in the source. It never fails: anything it doesn't recognize becomes an `.error` token.
 
 ### Errors
@@ -120,7 +129,7 @@ A literal is a run of characters that aren't whitespace and aren't reserved. The
 
 Several of them (`{ } [ ] @ ! ^ ' " : # <`) aren't used yet and are set aside for the future. To use a reserved character in a literal, or `%` itself, put `%` in front of it. For example, `%'` is an apostrophe, `%3` is the digit 3, and `%%` is a percent sign. **Digits must be escaped**, because bare digits are weights and repeat counts.
 
-On its own, `_` means the empty string. Inside a longer literal, as in `a_b`, it's an ordinary underscore, and `%_` is always an underscore. Literals are Unicode-aware, so `ð`, `ʔ`, `ǫ`, and `tlh` are all fine.
+On its own, `_` means the empty string. Inside a longer literal, as in `a_b`, it's an ordinary underscore, and `%_` is always an underscore. Names follow the same rules, so `_` on its own can only name the main production. It can't name a variable or rule set, and `%_` can't name a production. Literals are Unicode-aware, so `ð`, `ʔ`, `ǫ`, and `tlh` are all fine.
 
 The sigils `&`, `$`, and `*` must be directly in front of what they apply to: `&name`, not `& name`.
 
@@ -275,6 +284,7 @@ Compiling catches these problems before any word is generated, each reported as 
 |---|---|
 | `missingMain` | no `_ = …` |
 | `duplicateProduction`, `duplicateVariable`, `duplicateRuleSet` | `x`, `$n` or `@r` defined twice |
+| `underscoreName` | `%_ = …`, a production that would be confused with `_` |
 | `undefinedProduction` | `&vowl` when there's no `vowl`, even on a branch that's rarely chosen |
 | `undefinedVariable` | `$n` when there's no `$n = …` |
 | `undefinedRuleSet` | `@r` when there's no `@r = (…)` |

@@ -39,11 +39,19 @@ enum Grammar {
     Located(slice == "_" ? "" : String(characters), slice)
   }
 
+  /// `_` on its own, which means the empty string, where a name must be. A production can be
+  /// named `_`, since that's the main production, but nothing else can.
+  static func unnamed(_ kind: String) -> SourceParser<Located<String>> {
+    (char("_") *> (plain <|> char("%")).not()).peek()
+      *> fail("\"_\" can't be the name of a \(kind), since it means the empty string.").commit()
+  }
+
   // MARK: Quantifiers
 
   static let digits = char(anyOf: "0123456789")+.toString()
   static let variableName =
-    char("$") *> text.expecting("Expected a variable name after \"$\".").commit()
+    char("$")
+    *> (unnamed("variable") <|> text).expecting("Expected a variable name after \"$\".").commit()
   static let quantifier =
     (digits.map { Quantifier.number($0) } <|> variableName.map { Quantifier.variable($0.value) })
     .captured()
@@ -111,7 +119,8 @@ enum Grammar {
     .expecting("Patterns must be separated by whitespace.")
     .commit()
   static let ruleSetName =
-    char("@") *> text.expecting("Expected a rule set name after \"@\".").commit()
+    char("@")
+    *> (unnamed("rule set") <|> text).expecting("Expected a rule set name after \"@\".").commit()
   /// `@name`, which can appear anywhere a skip or substitution can.
   static let ruleSet =
     ruleSetName.captured().map { Located(RewriteStep.ruleSet($0.value), $1) } <* separated

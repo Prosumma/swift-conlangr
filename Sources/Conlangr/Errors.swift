@@ -55,6 +55,8 @@ extension Diagnostic {
     case missingMain
     /// A production is defined more than once.
     case duplicateProduction(String)
+    /// A production is named `%_`, which would be confused with the main production, `_`.
+    case underscoreName
     /// A variable is declared more than once.
     case duplicateVariable(String)
     /// A rule set is defined more than once.
@@ -113,6 +115,8 @@ extension Diagnostic {
         "There is no main production. Define one named \"_\", as in \"_ = ...\"."
       case .duplicateProduction(let name):
         "The production \"\(display(name))\" is already defined."
+      case .underscoreName:
+        "A production can't be named \"%_\", since \"_\" names the main production."
       case .duplicateVariable(let name):
         "The variable \"$\(name)\" is already declared."
       case .duplicateRuleSet(let name):

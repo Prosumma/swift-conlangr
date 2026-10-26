@@ -67,9 +67,9 @@ struct PolynesianTests {
   static let descendantLetters = vowels.union("hklmnpwʻ")
   static let ancestorLetters = vowels.union("ptkʻmngfshlrv")
 
-  /// The words to check, from a fixed seed.
-  static func sample(overrides: [String: UInt8] = [:]) throws -> [String] {
-    let generator = try Generator(source, overrides: overrides)
+  /// The words to check, from a fixed seed, starting from `production`.
+  static func sample(from production: String = "_") throws -> [String] {
+    let generator = try #require(try Generator(source).starting(at: production))
     var random = SplitMix64(seed: 1778)
     return try (0..<2_000).map { _ in try generator.generate(using: &random) }
   }
@@ -83,14 +83,14 @@ struct PolynesianTests {
   }
 
   @Test func descendantInventory() throws {
-    for word in try Self.sample(overrides: ["ancestor": 0]) {
+    for word in try Self.sample(from: "descendant") {
       #expect(word.allSatisfy(Self.descendantLetters.contains), "\(word)")
       #expect(Self.isOpenSyllables(word), "\(word)")
     }
   }
 
   @Test func ancestorInventory() throws {
-    let words = try Self.sample(overrides: ["descendant": 0])
+    let words = try Self.sample(from: "ancestor")
     for word in words {
       #expect(word.allSatisfy(Self.ancestorLetters.contains), "\(word)")
       #expect(Self.isOpenSyllables(word), "\(word)")

@@ -16,6 +16,22 @@ struct SyntaxErrorTests {
     ("$ = 1", "1:2: Expected a variable name after \"$\"."),
     ("$n 1", "1:4: Expected \"=\"."),
     ("$n = x", "1:6: Expected a number after \"=\"."),
+    ("$_ = 1", "1:2: \"_\" can't be the name of a variable, since it means the empty string."),
+    (
+      "_ = (+ $_ a)", "1:9: \"_\" can't be the name of a variable, since it means the empty string."
+    ),
+    ("_ = $_ a", "1:6: \"_\" can't be the name of a variable, since it means the empty string."),
+    (
+      "@_ = (> a=b)", "1:2: \"_\" can't be the name of a rule set, since it means the empty string."
+    ),
+    (
+      "_ = (+ a @_)",
+      "1:11: \"_\" can't be the name of a rule set, since it means the empty string."
+    ),
+    (
+      "_ = (+ a > b=c @_)",
+      "1:17: \"_\" can't be the name of a rule set, since it means the empty string."
+    ),
     // Text
     ("_ = a%", "1:7: Expected a character after \"%\". Write \"%%\" for a percent sign."),
     ("_ = a% b", "1:7: Expected a character after \"%\". Write \"%%\" for a percent sign."),
@@ -277,6 +293,13 @@ struct CompileErrorTests {
 
   @Test func duplicateMain() {
     #expect(messages("_ = a\n_ = b") == ["2:1: The production \"_\" is already defined."])
+  }
+
+  @Test func underscoreName() {
+    #expect(
+      messages("%_ = x\n_ = (+ &%_ y)") == [
+        "1:1: A production can't be named \"%_\", since \"_\" names the main production."
+      ])
   }
 
   @Test func duplicateProductionIsStillChecked() {
