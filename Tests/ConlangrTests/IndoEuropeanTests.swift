@@ -28,14 +28,13 @@ struct IndoEuropeanTests {
     $zeroGrade = 5    ; how often an unaccented root is zero grade, out of 6
 
     _ = (+ (? 3 &thematicNoun 2 &athematicNoun 3 &verb)
-      > *h₂e*=h₂a *eh₂*=ah₂ *h₂é*=h₂á *éh₂*=áh₂   ; h₂ colors e to a,
-        *h₃e*=h₃o *eh₃*=oh₃ *h₃é*=h₃ó *éh₃*=óh₃   ; and h₃ colors it to o
-        *sd*=zd *sg*=zg *sǵ*=zǵ *sb*=zb           ; s is voiced before a voiced stop
-        *tt*=tst *dt*=tst                         ; t is inserted between dentals
-        *ers=ēr *érs=ḗr *ors=ōr *órs=ṓr           ; Szemerényi's law: a final -Rs
-        *ens=ēn *éns=ḗn *ons=ōn *óns=ṓn           ; or -ss loses its s and
-        *oss=ōs *óss=ṓs                           ; lengthens the vowel
-        *rm=rm̥ *nm=nm̥ *sm=sm̥ *h₂m=h₂m̥)           ; final -m after a consonant is syllabic
+      > *h₂{e é}*=h₂{a á} *{e é}h₂*={a á}h₂      ; h₂ colors e to a,
+        *h₃{e é}*=h₃{o ó} *{e é}h₃*={o ó}h₃      ; and h₃ colors it to o
+        *s{d g ǵ b}*=z{}                         ; s is voiced before a voiced stop
+        *{t d}t*=tst                             ; t is inserted between dentals
+        *{e é o ó}{r n}s={ē ḗ ō ṓ}{}             ; Szemerényi's law: a final -Rs
+        *{o ó}ss={ō ṓ}s                          ; or -ss loses its s and lengthens the vowel
+        *{r n s h₂}m={}m̥)                        ; final -m after a consonant is syllabic
 
     ; Thematic nouns and adjectives: a root, perhaps a suffix, and a thematic
     ; ending, accented on the root (*dómos) or on the ending (*ḱlutós).
@@ -82,9 +81,8 @@ struct IndoEuropeanTests {
     oRoot = (+ &root > *·*=o)
     plainRoot = (? $zeroGrade &zeroRoot 1 (+ &root > *·*=e))
     zeroRoot = (+ &root
-      > *·r*=r̥ *·l*=l̥ *·m*=m̥ *·n*=n̥ *·y*=i *·w*=u
-        *r·*=r̥ *l·*=l̥ *m·*=m̥ *n·*=n̥ *y·*=i *w·*=u
-        *h₁·*=h₁ *h₂·*=h₂ *h₃·*=h₃ *·h₁*=h₁ *·h₂*=h₂ *·h₃*=h₃
+      > *·{r l m n y w}*={r̥ l̥ m̥ n̥ i u} *{r l m n y w}·*={r̥ l̥ m̥ n̥ i u}
+        *{h₁ h₂ h₃}·*={} *·{h₁ h₂ h₃}*={}
         *·*=e)
 
     ; Roots: every combination of stops except two plain voiced ones (*ded-),
@@ -95,7 +93,7 @@ struct IndoEuropeanTests {
       1 (+ &onsetDh · &codaD) 1 (+ &onsetD · &codaDh) 1 (+ &onsetDh · &codaDh)
       4 (+ &onsetT · &codaN) 3 (+ &onsetD · &codaN) 3 (+ &onsetDh · &codaN)
       3 (+ &onsetN · &codaT) 2 (+ &onsetN · &codaD) 2 (+ &onsetN · &codaDh)
-      3 (+ &onsetN · &codaN - *h₁·h₁* *h₂·h₂* *h₃·h₃*))
+      3 (+ &onsetN · &codaN - *{h₁ h₂ h₃}·{}*))
 
     ; Onsets and codas, by the kind of stop they contain. Only a voiceless stop
     ; can take s- in front (s-mobile: *speḱ-, *steh₂-).

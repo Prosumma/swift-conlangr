@@ -216,6 +216,63 @@ struct RewriteTests {
   }
 }
 
+struct ClassTests {
+  @Test(arguments: [
+    ("*{a e}*=o", "bab", "bob"),
+    ("*{a e}*=o", "beb", "bob"),
+    ("*{a e}*=o", "bib", "bib"),
+    ("{a e}*=o", "abe", "obe"),
+    ("*{a e}=o", "abe", "abo"),
+    ("b{a e}b=yes", "beb", "yes"),
+    ("b{a e}b=yes", "bebe", "bebe"),
+  ])
+  func classMatchesAnyAlternative(substitution: String, input: String, expected: String) throws {
+    #expect(try word("_ = (+ \(input) > \(substitution))") == expected)
+  }
+
+  @Test func mapsByPosition() throws {
+    #expect(try word("_ = (+ ba¹ke² > *{a e}{¹ ²}*={á é}{_ _})") == "báké")
+  }
+
+  @Test func copiesWhatItMatched() throws {
+    #expect(try word("_ = (+ ɣiɣeɣa > *ɣ{i e}*=y{})") == "yiyeɣa")
+  }
+
+  @Test func everyClassPairsWithTheOnlyOne() throws {
+    // With one class in the pattern, each class in the replacement pairs with it.
+    #expect(try word("_ = (+ lugal·ª > *{l n}·ª*={}·{}a)") == "lugal·la")
+    #expect(try word("_ = (+ ab > *{a b}*={b a}{})") == "baab")
+  }
+
+  @Test func repeatsWhatTheClassBeforeMatched() throws {
+    #expect(
+      try words("_ = (+ *ab *ab *ab - *{a b}{}{}*)") == ["aab", "aba", "abb", "baa", "bab", "bba"])
+    #expect(try word("_ = (+ kalla > *{l n}{}*={}d)") == "kalda")
+  }
+
+  @Test func longestAlternativeFirst() throws {
+    #expect(try word("_ = (+ tla > *{t tl}*=X)") == "Xa")
+    // If the longest alternative doesn't lead to a match, a shorter one is tried.
+    #expect(try word("_ = (+ tla > *{t tl}la*=X)") == "X")
+  }
+
+  @Test func matchesDoNotOverlap() throws {
+    #expect(try word("_ = (+ aaa > *{a}{a}*=b)") == "ba")
+  }
+
+  @Test func alternativesAreGraphemes() throws {
+    #expect(try word("_ = (+ ɣí > *ɣ{i í}*=y{})") == "yí")
+  }
+
+  @Test func emptyMappedAlternativeDeletes() throws {
+    #expect(try word("_ = (+ abc > *{a b}*={_ x})") == "xc")
+  }
+
+  @Test func escapesInAClass() throws {
+    #expect(try word("_ = (+ %(a > *{%( %)}a*=b)") == "b")
+  }
+}
+
 struct VariableTests {
   @Test func weight() throws {
     let tally = try tally("$w = 3\n_ = (? $w a b)")

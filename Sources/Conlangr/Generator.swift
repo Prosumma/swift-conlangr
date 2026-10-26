@@ -46,7 +46,7 @@ indirect enum Node: Sendable {
   case literal(String)
   case rule(Int)
   case choice(Choice)
-  case sequence([Repetition], [RewriteStep])
+  case sequence([Repetition], [Rewrite])
 }
 
 /// A weighted choice with at least one alternative that can be chosen.
@@ -176,14 +176,14 @@ struct Evaluation<R: RandomNumberGenerator> {
 /// How far a sequence has got.
 struct SequenceState {
   let repetitions: [Repetition]
-  let rewrites: [RewriteStep]
+  let rewrites: [Rewrite]
   /// The index of the item being produced.
   var item = 0
   /// How many more times to produce it, including the one in progress.
   var remaining = 0
   var word = ""
 
-  init(repetitions: [Repetition], rewrites: [RewriteStep]) {
+  init(repetitions: [Repetition], rewrites: [Rewrite]) {
     self.repetitions = repetitions
     self.rewrites = rewrites
   }
@@ -218,21 +218,21 @@ struct SequenceState {
   /// Applies the skips and substitutions to the finished word. Returns the result, or `nil`
   /// if a skip rejected it.
   func rewrite() throws(GenerationError) -> String? {
-    var word = word
+    var word = Word(word)
     for rewrite in rewrites {
       switch rewrite {
       case .reject(let pattern):
-        if pattern.matches(word) {
+        if pattern.matches(&word) {
           return nil
         }
       case .substitute(let pattern, let replacement):
-        if let substituted = pattern.substitute(replacement, in: word) {
-          word = substituted
-          try checkLength(of: word)
+        if let substituted = pattern.substitute(replacement, in: &word) {
+          try checkLength(of: substituted)
+          word = Word(substituted)
         }
       }
     }
-    return word
+    return word.text
   }
 
   private func checkLength(of text: String) throws(GenerationError) {

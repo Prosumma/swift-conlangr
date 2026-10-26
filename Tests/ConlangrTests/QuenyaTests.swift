@@ -25,7 +25,7 @@ struct QuenyaTests {
     $plurals = 1      ; so one word in five is plural
 
     _ = (+ (? $words &word $plurals &plural)
-      > *ea*=eä *eo*=eö *oe*=oë *e=ë      ; an e or o in hiatus, or a final e, takes a diaeresis
+      > *e{a o}*=e{ä ö} *oe*=oë *e=ë      ; an e or o in hiatus, or a final e, takes a diaeresis
         *kw*=qu *ks*=x *k*=c)            ; and k is written c
 
     ; A word is a first syllable, perhaps another, and an ending. A syllable
@@ -46,7 +46,7 @@ struct QuenyaTests {
 
     ; Plurals: -i after a consonant, -ier for -ië, -i for -ë, and -r after
     ; any other vowel. Each rule sees the word as the one before left it.
-    plural = (+ &word > *n=ni *l=li *r=ri *s=si *t=ti *ie=ier *e=i *a=ar *o=or *u=ur)
+    plural = (+ &word > *{n l r s t}={}i *ie=ier *e=i *{a o u}={}r)
 
     onset = (? 7 _ 2 p 4 t 3 k 3 m 3 n 3 l 2 r 3 s 2 h 3 v 1 f 1 y
       1 kw 1 ny 1 ty 1 hy 1 hw)

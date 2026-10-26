@@ -9,7 +9,7 @@ typealias SourceParser<Output> = Parser<String, Output>
 /// The grammar is recursive through `expression`, so these must stay `static let`s.
 enum Grammar {
   /// Characters that can't appear in text without a `%` in front of them. Some aren't used
-  /// yet and are set aside for the future: `{ } [ ] @ ! ^ ' " : # <`.
+  /// yet and are set aside for the future: `[ ] @ ! ^ ' " : # <`.
   static let reserved = Set("(){}[]+?&-$@!^*='\":;#0123456789<>")
 
   /// Whether `c` is entirely whitespace. Matches `Parsers.whitespace`, so a space followed by
@@ -78,11 +78,18 @@ enum Grammar {
     <* (close <|> misplacedRewrite).expecting("Expected \")\"."))
     .commit1()
 
+  /// `{a b c}`, a class, or `{}`, which repeats or copies another class.
+  static let choice =
+    (char("{") *> gap *> (text <* gap)* <* char("}").expecting("Expected \"}\"."))
+    .map { $0.isEmpty ? Part.same : Part.choice($0) }
+    .commit1()
+  /// Text and classes, with nothing between them.
+  static let parts = (text.map { Part.text($0.value) } <|> choice).captured().map {
+    Located($0, $1)
+  }+
   static let pattern =
-    tuple(char("*").optional(), text.expecting("Expected pattern text."), char("*").optional())
-    .captured()
-    .map { parts, slice in
-      let (leading, text, trailing) = parts
+    tuple(char("*").optional(), parts.expecting("Expected pattern text."), char("*").optional())
+    .map { leading, parts, trailing in
       let position: Pattern.Position =
         switch (leading.isEmpty, trailing.isEmpty) {
         case (true, true): .whole
@@ -90,28 +97,28 @@ enum Grammar {
         case (false, true): .suffix
         case (false, false): .anywhere
         }
-      return Located(Pattern(position: position, text: text.value), slice)
+      return PatternSyntax(position: position, parts: parts)
     }
     .commit1()
-  /// Requires whitespace after a pattern or replacement, so that `*a*b` is an error rather
-  /// than the two patterns `*a*` and `b`.
+  /// Requires whitespace after a pattern or replacement, so that `*a*b` and `*a*{b c}` are
+  /// errors rather than two patterns.
   static let separated =
-    (char("*") <|> char("%") <|> plain).not()
+    (char("*") <|> char("%") <|> char("{") <|> plain).not()
     .expecting("Patterns must be separated by whitespace.")
     .commit()
   static let rejections =
-    (char("-") *> gap
-    *> (pattern <* separated <* gap)+.expecting("Expected a pattern after \"-\".").commit())
-    .map { patterns in patterns.map { Located(RewriteStep.reject($0.value), $0.range) } }
+    char("-") *> gap
+    *> (pattern.captured().map { Located(RewriteStep.reject($0), $1) } <* separated <* gap)+
+    .expecting("Expected a pattern after \"-\".").commit()
   static let substitution =
     tuple(
       pattern <* gap <* char("=") <* gap,
-      text.expecting("Expected a replacement after \"=\". Write \"_\" to delete the match.")
+      parts.expecting("Expected a replacement after \"=\". Write \"_\" to delete the match.")
         <* separated
     )
     .captured()
     .map { parts, slice in
-      Located(RewriteStep.substitute(parts.0.value, with: parts.1.value), slice)
+      Located(RewriteStep.substitute(parts.0, with: parts.1), slice)
     }
     .commit1()
   static let substitutions =

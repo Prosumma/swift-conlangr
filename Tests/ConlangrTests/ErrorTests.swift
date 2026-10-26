@@ -44,8 +44,11 @@ struct SyntaxErrorTests {
       "_ = (+ a > a=)", "1:14: Expected a replacement after \"=\". Write \"_\" to delete the match."
     ),
     ("_ = (+ a - b &c)", "1:14: Expected \")\"."),
+    ("_ = (+ a - *{a b*)", "1:17: Expected \"}\"."),
+    ("_ = (+ a - *{a {b}}*)", "1:16: Expected \"}\"."),
     ("_ = (+ *ab *ab - *a*b)", "1:21: Patterns must be separated by whitespace."),
     ("_ = (+ a > a=b*c=d)", "1:15: Patterns must be separated by whitespace."),
+    ("_ = (+ ab - *a*{b c})", "1:16: Patterns must be separated by whitespace."),
   ])
   func syntaxError(source: String, message: String) {
     let diagnostics = diagnostics(source)
@@ -216,7 +219,7 @@ struct CompileErrorTests {
     let text = String(repeating: "a", count: Generator.maximumLength + 1)
     #expect(messages("_ = \(text)") == ["1:5: \"\(text)\" is longer than 64 characters."])
     #expect(
-      messages("_ = (+ a > a=\(text))") == ["1:12: \"\(text)\" is longer than 64 characters."])
+      messages("_ = (+ a > a=\(text))") == ["1:14: \"\(text)\" is longer than 64 characters."])
   }
 
   @Test func zeroRepeatCount() {
@@ -253,6 +256,85 @@ struct CompileErrorTests {
       messages("_ = (+ a - \(pattern))") == [
         "1:12: A pattern anchored with \"*\" must have some text."
       ])
+  }
+
+  @Test func emptyAlternative() {
+    #expect(
+      messages("_ = (+ a - *{a _}*)") == [
+        "1:16: A class in a pattern can't have an empty alternative."
+      ])
+  }
+
+  @Test func nothingToRepeat() {
+    #expect(
+      messages("_ = (+ a - *{}a*)") == [
+        "1:13: There's no class before this \"{}\" for it to repeat."
+      ])
+  }
+
+  @Test func classCountMismatch() {
+    #expect(
+      messages("_ = (+ a > *a*={})") == [
+        "1:16: The replacement has 1 class, but the pattern has none to pair with."
+      ])
+    #expect(
+      messages("_ = (+ a > *a*={}{})") == [
+        "1:16: The replacement has 2 classes, but the pattern has none to pair with."
+      ])
+    #expect(
+      messages("_ = (+ a > *{a b}{c d}*={})") == [
+        "1:25: The replacement has 1 class, but the pattern has 2. Use as many as the pattern, or give the pattern just one."
+      ])
+  }
+
+  @Test func classSizeMismatch() {
+    #expect(
+      messages("_ = (+ a > *{a b c}*={x y})") == [
+        "1:22: This class has 2 alternatives, but the class it pairs with in the pattern has 3."
+      ])
+    #expect(
+      messages("_ = (+ a > *{a b}*={x})") == [
+        "1:20: This class has 1 alternative, but the class it pairs with in the pattern has 2."
+      ])
+  }
+
+  @Test func patternTooLong() {
+    // Each part fits, but together they're too long for any word to match.
+    let half = String(repeating: "a", count: 40)
+    #expect(
+      messages("_ = (+ a - *\(half){\(half) \(half)b}*)") == [
+        "1:12: This pattern can never match: even its shortest match is longer than 64 characters."
+      ])
+    #expect(messages("_ = (+ a - *{\(half) b}{}*)") == [])
+  }
+
+  @Test func replacementTooLong() {
+    let half = String(repeating: "a", count: 40)
+    #expect(
+      messages("_ = (+ a > *{a b}*=\(half){\(half) b})") == [
+        "1:20: This replacement can be longer than 64 characters."
+      ])
+    // A copy is as long as what its class matched.
+    #expect(
+      messages("_ = (+ a > *{a \(half)}*={}{})") == [
+        "1:\(half.count + 19): This replacement can be longer than 64 characters."
+      ])
+    // Classes that pair with the same class choose together, so these are never longer than 41.
+    #expect(messages("_ = (+ a > *{a b}*={x \(half)}{\(half) y})") == [])
+  }
+
+  @Test func reportsTheReplacementEvenIfThePatternIsWrong() {
+    let text = String(repeating: "a", count: Generator.maximumLength + 1)
+    #expect(
+      messages("_ = (+ a > *_*=\(text) *{a}*={b c})") == [
+        "1:12: A pattern anchored with \"*\" must have some text.",
+        "1:16: \"\(text)\" is longer than 64 characters.",
+        "1:\(text.count + 23): This class has 2 alternatives, but the class it pairs with in the pattern has 1.",
+      ])
+  }
+
+  @Test func classOnlyPatternIsNotEmpty() {
+    #expect(messages("_ = (+ a - *{a b}*)") == [])
   }
 
   @Test func neverFinishes() {

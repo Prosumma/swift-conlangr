@@ -182,21 +182,13 @@ struct Compiler {
         }
         return repetition
       }
-      for step in steps {
-        switch step.value {
-        case .reject(let pattern):
-          check(pattern, at: step.range)
-        case .substitute(let pattern, let replacement):
-          check(pattern, at: step.range)
-          checkLength(of: replacement, at: step.range)
-        }
-      }
-      // An invalid item was dropped and reported. Don't build a sequence without it, since
-      // the generator assumes a sequence has every item, and at least one.
-      guard repetitions.count == items.count else {
+      let rewrites = steps.compactMap { rewrite($0) }
+      // An invalid item or rewrite was dropped and reported. Don't build a sequence without it,
+      // since the generator assumes a sequence has every item, and at least one.
+      guard repetitions.count == items.count, rewrites.count == steps.count else {
         return .literal("")
       }
-      return .sequence(repetitions, steps.map(\.value))
+      return .sequence(repetitions, rewrites)
     }
   }
 
@@ -226,17 +218,147 @@ struct Compiler {
     return number
   }
 
-  mutating func check(_ pattern: Pattern, at range: Range<String.Index>) {
-    if pattern.text.isEmpty && pattern.position != .whole {
-      report(.emptyPattern, at: range)
+  /// Reports `text` if it's too long, and returns whether it's all right.
+  @discardableResult
+  mutating func checkLength(of text: String, at range: Range<String.Index>) -> Bool {
+    guard text.count <= Generator.maximumLength else {
+      report(.textTooLong(text), at: range)
+      return false
     }
-    checkLength(of: pattern.text, at: range)
+    return true
   }
 
-  mutating func checkLength(of text: String, at range: Range<String.Index>) {
-    if text.count > Generator.maximumLength {
-      report(.textTooLong(text), at: range)
+  // MARK: Rewrites
+
+  /// Compiles a skip or substitution, or returns `nil` if it has problems, which have been
+  /// reported.
+  mutating func rewrite(_ step: Located<RewriteStep>) -> Rewrite? {
+    switch step.value {
+    case .reject(let syntax):
+      return pattern(syntax, at: step.range).compiled.map { .reject($0) }
+    case .substitute(let syntax, let parts):
+      // Check the replacement even if the pattern has problems, to find all of them at once.
+      let (pattern, classes) = pattern(syntax, at: step.range)
+      let replacement = replacement(parts, pairingWith: classes)
+      guard let pattern, let replacement else {
+        return nil
+      }
+      return .substitute(pattern, replacement)
     }
+  }
+
+  /// Compiles a pattern. Returns `nil` as the pattern if it has problems, which have been
+  /// reported, but always returns its classes, so that a replacement can still be checked
+  /// against them.
+  mutating func pattern(
+    _ syntax: PatternSyntax, at range: Range<String.Index>
+  ) -> (compiled: Pattern?, classes: [Pattern.Class]) {
+    var elements: [Pattern.Element] = []
+    var classes: [Pattern.Class] = []
+    var valid = true
+    // The length of the shortest text the pattern can match.
+    var shortest = 0
+    for part in syntax.parts {
+      switch part.value {
+      case .text(let text):
+        valid = checkLength(of: text, at: part.range) && valid
+        if !text.isEmpty {
+          elements.append(.text(Array(text)))
+          shortest += text.count
+        }
+      case .choice(let alternatives):
+        var texts: [String] = []
+        for alternative in alternatives {
+          if alternative.value.isEmpty {
+            report(.emptyAlternative, at: alternative.range)
+            valid = false
+          }
+          valid = checkLength(of: alternative.value, at: alternative.range) && valid
+          texts.append(alternative.value)
+        }
+        elements.append(.choice(classes.count))
+        classes.append(Pattern.Class(texts))
+        shortest += texts.map(\.count).min() ?? 0
+      case .same:
+        guard let last = classes.last else {
+          report(.nothingToRepeat, at: part.range)
+          valid = false
+          continue
+        }
+        elements.append(.repeated(classes.count - 1))
+        shortest += last.alternatives.map(\.count).min() ?? 0
+      }
+    }
+    // Problems with the parts have already been reported, so don't report them again as a
+    // problem with the whole pattern.
+    if valid && shortest == 0 && syntax.position != .whole {
+      report(.emptyPattern, at: range)
+      valid = false
+    }
+    if valid && shortest > Generator.maximumLength {
+      report(.patternTooLong, at: range)
+      valid = false
+    }
+    let compiled =
+      valid ? Pattern(position: syntax.position, elements: elements, classes: classes) : nil
+    return (compiled, classes)
+  }
+
+  /// Compiles a replacement for a pattern with `classes`. The replacement's classes pair with
+  /// the pattern's in order, or all with the pattern's only class.
+  mutating func replacement(
+    _ parts: [Located<Part>], pairingWith classes: [Pattern.Class]
+  ) -> Replacement? {
+    var valid = true
+    var replacementClasses: [Located<Part>] = []
+    for part in parts {
+      switch part.value {
+      case .text(let text):
+        valid = checkLength(of: text, at: part.range) && valid
+      case .choice(let alternatives):
+        for alternative in alternatives {
+          valid = checkLength(of: alternative.value, at: alternative.range) && valid
+        }
+        replacementClasses.append(part)
+      case .same:
+        replacementClasses.append(part)
+      }
+    }
+    let count = classes.count
+    if let first = replacementClasses.first, count != 1 && replacementClasses.count != count {
+      // Without a pairing, there's nothing more to check.
+      report(
+        .classCountMismatch(pattern: count, replacement: replacementClasses.count), at: first.range)
+      return nil
+    }
+    var elements: [Replacement.Element] = []
+    var next = 0
+    for part in parts {
+      let index = count == 1 ? 0 : next
+      switch part.value {
+      case .text(let text):
+        elements.append(.text(text))
+        continue
+      case .same:
+        elements.append(.choice(index, classes[index].alternatives.map { String($0) }))
+      case .choice(let alternatives):
+        let expected = classes[index].alternatives.count
+        if alternatives.count != expected {
+          report(.classSizeMismatch(expected: expected, found: alternatives.count), at: part.range)
+          valid = false
+        }
+        elements.append(.choice(index, alternatives.map(\.value)))
+      }
+      next += 1
+    }
+    let replacement = Replacement(elements: elements)
+    // Problems with the parts have already been reported, so don't report them again as a
+    // problem with the whole replacement.
+    if valid, let first = parts.first, replacement.longest > Generator.maximumLength {
+      report(.replacementTooLong, at: first.range)
+      valid = false
+    }
+    return valid ? replacement : nil
   }
 
   // MARK: Termination

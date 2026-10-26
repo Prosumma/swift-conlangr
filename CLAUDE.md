@@ -26,7 +26,8 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 
 | File | Contents |
 |---|---|
-| `Sources/Conlangr/Syntax.swift` | The syntax tree (`Definition`, `Expression`, `Item`, `Quantifier`, `RewriteStep`, `Pattern`) and `Located<Value>` |
+| `Sources/Conlangr/Syntax.swift` | The syntax tree (`Definition`, `Expression`, `Item`, `Quantifier`, `RewriteStep`, `PatternSyntax`, `Part`) and `Located<Value>` |
+| `Sources/Conlangr/Rewrite.swift` | Compiled rewrites: `Rewrite`, `Pattern` (with its matcher) and `Replacement` |
 | `Sources/Conlangr/Grammar.swift` | The Parsimonious grammar, source text → `[Definition]` |
 | `Sources/Conlangr/Script.swift` | Public `Script` (parse, `compile(overrides:)`) and the internal `Compiler` |
 | `Sources/Conlangr/Generator.swift` | Public `Generator`, the compiled `Node` form, and the evaluator |
@@ -50,6 +51,7 @@ The user prefers type-driven design (see `../../CLAUDE.md`). These invariants ar
 - **Everything is resolved.** Productions refer to each other by index into `Generator.rules`, so a dangling reference can't exist in a `Generator`. `Generator.init(rules:main:)` is internal, and only `Compiler` calls it, after its checks pass.
 - **Every production can finish.** `Compiler.checkTermination` computes which productions can finish (a least fixpoint, starting from literals) and rejects the rest. It reports only the productions in a cycle, not the ones that depend on a cycle, because fixing the cycle fixes those too.
 - **`Choice` always has something to choose.** Its failable initializer drops zero-weight alternatives and returns `nil` if none are left. Duplicate alternatives are kept, so they count twice. That's what makes `*ptkk` weight `k` double.
+- **Rewrites are resolved.** The compiler pairs each class in a replacement with a class in the pattern, and checks that their alternatives line up, so `Replacement.Element.choice` always has one alternative for each of its pattern class's. A `{}` in a pattern becomes a `.repeated` element that refers to an earlier class. A pattern that can match anywhere can't match nothing, so scanning a word always makes progress.
 - **A repeat count can't be zero.** `Repetition`'s failable initializer rejects a `maximum` below 1, as `Choice`'s does for an empty choice.
 
 ## Grammar conventions
@@ -70,7 +72,8 @@ No input may crash the process, including on a secondary thread's 512 KB stack.
 
 ## Generation
 
-- `Generator.maximumLength` (64) applies everywhere, inclusively: literals, patterns, and replacements at compile time, and every intermediate and final result at run time.
+- `Pattern` matches a pattern that's only text with String's own methods, and skips positions that can't start a match before running its backtracking matcher. Without both, debug builds, and so the tests, ran 3 to 6 times slower. A `Word` converts the word to characters once, for all the rewrites that need them until one changes it.
+- `Generator.maximumLength` (64) applies everywhere, inclusively: at compile time, to literals, to each part of a pattern or replacement, to a pattern's shortest match, and to a replacement's longest result (classes that pair with the same pattern class choose together, so they're added up per alternative); at run time, to every intermediate and final result.
 - The randomness is a generic `RandomNumberGenerator`. Tests use the seeded `SplitMix64` in `Tests/ConlangrTests/Support.swift`, so they're deterministic.
 
 ## Tests

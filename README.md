@@ -170,6 +170,32 @@ _ = (+ *ab > *a*=z - *z*)     ; always produces "b"
 
 Rewrites apply only to the concat they're attached to. To apply them to an entire word, attach them to the outermost concat.
 
+#### Classes
+
+A **class** in braces matches any one of its alternatives, which are separated by whitespace. `*{a e}h₂*` matches *ah₂* or *eh₂*. When more than one alternative could match, the longest is tried first.
+
+In a replacement, a class maps what the pattern's class matched to the alternative in the same position, so these two lines say the same thing:
+
+```
+> *{a e i}¹*={ā ē ī}
+> *a¹*=ā *e¹*=ē *i¹*=ī
+```
+
+An empty class, `{}`, means "the same":
+
+- In a replacement, `{}` copies whatever its class in the pattern matched: `*ɣ{i e}*=y{}` turns *ɣi* into *yi* and *ɣe* into *ye*.
+- In a pattern, `{}` repeats whatever the class before it matched: `- *{a e i o u}{}{}*` rejects three of the same vowel in a row.
+
+The classes in a replacement pair with those in the pattern in order, so there must be as many of them. If the pattern has only one class, though, every class in the replacement pairs with that one, so its match can be used more than once:
+
+```
+> *{l n r}·a*={}·{}a      ; lugal·a → lugal·la
+```
+
+A mapped alternative can be `_`, which deletes what it replaces: `*{⁰ ŋ}*={_ ng}`.
+
+Since a class maps every match in a single pass, it can express a chain shift, where one sound becomes another that's itself changing. `*{k t}*={ʔ k}` turns *taku* into *kaʔu*. As two separate substitutions, `*k*=ʔ *t*=k` would only work in that order. In the other order, every *t* would become *k* and then *ʔ*.
+
 ### Variables
 
 Variables let you change weights and repeat counts without editing the productions. Declare a variable with `$`, and use it anywhere a number can go:
@@ -208,6 +234,12 @@ Compiling catches these problems before any word is generated, each reported as 
 | `zeroRepeatCount` | `(+ a 0 b)` |
 | `noChoosableAlternative` | `(? 0 a 0 b)` |
 | `emptyPattern` | `- *_*` |
+| `emptyAlternative` | `- *{a _}*` |
+| `nothingToRepeat` | `- *{}a*`, with no class before the `{}` |
+| `classCountMismatch` | `> *{a b}{c d}*={}`, with two classes in the pattern and one in the replacement |
+| `classSizeMismatch` | `> *{a b c}*={x y}` |
+| `patternTooLong` | a pattern whose shortest match is longer than 64 characters, so it can never match |
+| `replacementTooLong` | a replacement that can produce more than 64 characters |
 | `neverFinishes` | `a = (+ x &a)`, which can only ever produce more of itself |
 
 A syntax error is reported as `syntax`, with a message saying what was expected, and groups nested too deeply as `nestedTooDeeply`.
@@ -223,7 +255,7 @@ _ = (+ x &inner y)      ; rather than (+ x (? a b) y), when the nesting gets dee
 
 Some grammars can only be judged by running them, so `generate()` has two safeguards:
 
-- **Length.** Everything that's generated, including each part of a word along the way, must be at most 64 characters (`Generator.maximumLength`). Otherwise, `generate()` throws `GenerationError.tooLong`. The same limit applies to literals in the source, so a literal can never be too long to use.
+- **Length.** Everything that's generated, including each part of a word along the way, must be at most 64 characters (`Generator.maximumLength`). Otherwise, `generate()` throws `GenerationError.tooLong`. The same limit applies to the source: a literal, a pattern's shortest match, and a replacement's longest result must all fit, so none of them can be too long to use.
 - **Steps.** Generating a word may take at most 65,535 steps (`Generator.maximumSteps`). Each reference, each select, and each attempt at a concat counts as a step, including attempts that a skip rejects. Otherwise, `generate()` throws `GenerationError.tooManySteps`. Usually this means a skip rejects every possible word, as in `(+ k *ai - ka ki)`, or a production refers to itself so often that it rarely finishes.
 
 Generation doesn't recurse, so no grammar can overflow the stack while generating, however much its productions refer to each other.
@@ -270,7 +302,7 @@ Each of these test files holds a grammar for a language inspired by a real or in
 | `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest; digraphs as single letters |
 | `OldNorseTests.swift` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
 | `IndoEuropeanTests.swift` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
-| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as ordered substitutions, checked against real cognates |
+| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates |
 | `SiniticTests.swift` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
 | `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
 | `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |

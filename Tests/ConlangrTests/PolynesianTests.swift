@@ -14,15 +14,16 @@ import Testing
 ///   into h, ŋ into n, r into l, and v into w. So the ancestor's taŋata becomes kanaka, and its 13
 ///   consonants become Hawaiian's eight.
 ///
-/// The ancestral forms are the grammar's idealized form, so the sound changes are substitutions,
-/// and their order matters: k must become ʔ before t becomes k. Conlangr can't copy what it
+/// The ancestral forms are the grammar's idealized form, and the sound changes are a single
+/// substitution whose class maps every sound at once. Applied one at a time, k → ʔ and t → k
+/// would have to be carefully ordered, or every t would end up as ʔ. Conlangr can't copy what it
 /// generates, so there's no reduplication, which Polynesian languages use a great deal.
 struct PolynesianTests {
-  /// The descendant's sound changes, in order.
-  static let soundChanges = "*ʔ*=_ *h*=_ *k*=ʔ *t*=k *f*=h *s*=h *ŋ*=n *r*=l *v*=w"
+  /// The descendant's sound changes, all at once.
+  static let soundChanges = "*{ʔ h k t f s ŋ r v}*={_ _ ʔ k h h n l w}"
 
   /// How both languages write long vowels, ŋ and ʔ.
-  static let spelling = "*aa*=ā *ee*=ē *ii*=ī *oo*=ō *uu*=ū *ŋ*=ng *ʔ*=ʻ"
+  static let spelling = "*{a e i o u}{}*={ā ē ī ō ū} *ŋ*=ng *ʔ*=ʻ"
 
   static let source = """
     ; Polynesian. Words are generated in the ancestral language and, usually,
@@ -34,18 +35,18 @@ struct PolynesianTests {
 
     _ = (? $descendant &descendant $ancestor &ancestor)
 
-    ; The sound changes, in order. k becomes ʔ only after the old ʔ is lost,
-    ; and t becomes k only after that, so the shift doesn't collapse. A lost
+    ; The sound changes, all at once, so that the old t becomes k without the
+    ; old k, which becomes ʔ, also turning into something else. A lost
     ; consonant mustn't leave three like vowels together.
     descendant = (+ &word
       > \(soundChanges)
-      - *aaa* *eee* *iii* *ooo* *uuu*
+      - *{a e i o u}{}{}*
       > \(spelling))
     ancestor = (+ &word > \(spelling))
 
     ; A word is a root, perhaps with an affix.
     word = (+ (? 8 &root 2 (+ &prefix &root) 3 (+ &root &suffix) 1 (+ &prefix &root &suffix))
-      - *aaa* *eee* *iii* *ooo* *uuu*)
+      - *{a e i o u}{}{}*)
     root = (+ &syllable &syllable (? 3 _ 1 &syllable))
     syllable = (+ (? 8 &C 1 _) &V)
     prefix = (? 3 faka 1 fe 1 ma)

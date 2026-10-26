@@ -73,6 +73,21 @@ extension Diagnostic {
     case noChoosableAlternative
     /// A pattern such as `*_*` is anchored with `*` but has no text.
     case emptyPattern
+    /// A class in a pattern, such as `{a _}`, has an empty alternative.
+    case emptyAlternative
+    /// A `{}` in a pattern has no class before it to repeat.
+    case nothingToRepeat
+    /// A replacement's classes don't pair with its pattern's: there must be as many, unless the
+    /// pattern has exactly one.
+    case classCountMismatch(pattern: Int, replacement: Int)
+    /// A class in a replacement has a different number of alternatives from the pattern's class
+    /// it pairs with.
+    case classSizeMismatch(expected: Int, found: Int)
+    /// Even the shortest text a pattern can match is longer than `Generator.maximumLength`, so it
+    /// can never match.
+    case patternTooLong
+    /// A replacement can produce text longer than `Generator.maximumLength`.
+    case replacementTooLong
     /// A production can't produce anything, because every way of producing it leads back
     /// to itself.
     case neverFinishes(String)
@@ -107,11 +122,30 @@ extension Diagnostic {
         "Every alternative has a weight of 0, so there's nothing to choose."
       case .emptyPattern:
         "A pattern anchored with \"*\" must have some text."
+      case .emptyAlternative:
+        "A class in a pattern can't have an empty alternative."
+      case .nothingToRepeat:
+        "There's no class before this \"{}\" for it to repeat."
+      case .classCountMismatch(pattern: 0, let replacement):
+        "The replacement has \(counting(replacement, "class", "classes")), but the pattern has none to pair with."
+      case .classCountMismatch(let pattern, let replacement):
+        "The replacement has \(counting(replacement, "class", "classes")), but the pattern has \(pattern). Use as many as the pattern, or give the pattern just one."
+      case .classSizeMismatch(let expected, let found):
+        "This class has \(counting(found, "alternative", "alternatives")), but the class it pairs with in the pattern has \(expected)."
+      case .patternTooLong:
+        "This pattern can never match: even its shortest match is longer than \(Generator.maximumLength) characters."
+      case .replacementTooLong:
+        "This replacement can be longer than \(Generator.maximumLength) characters."
       case .neverFinishes(let name):
         "The production \"\(display(name))\" can never finish: every way of producing it leads back to itself."
       }
     }
   }
+}
+
+/// `count` followed by `singular` or `plural` to agree with it, as in "1 class" or "2 classes".
+private func counting(_ count: Int, _ singular: String, _ plural: String) -> String {
+  "\(count) \(count == 1 ? singular : plural)"
 }
 
 /// A failure while generating a word.

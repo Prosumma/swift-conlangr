@@ -8,11 +8,11 @@ struct TokenTests {
 
   @Test func everyKind() {
     #expect(
-      kinds("$w = 12\n_ = (? $w a %( *bc &x - *q > a=_) ; hi\n {") == [
+      kinds("$w = 12\n_ = (? $w a %( *bc &x - *q > a=_) ; hi\n [") == [
         "op:$", "literal:w", "op:=", "number:12",
         "literal:", "op:=", "parens:(", "op:?", "op:$", "literal:w", "literal:a", "literal:(",
         "op:*", "literal:bc", "op:&", "literal:x", "op:-", "op:*", "literal:q", "op:>",
-        "literal:a", "op:=", "literal:", "parens:)", "comment: hi", "error:{",
+        "literal:a", "op:=", "literal:", "parens:)", "comment: hi", "error:[",
       ])
   }
 
@@ -24,11 +24,19 @@ struct TokenTests {
   }
 
   @Test func errorsAreSingleCharacters() {
-    #expect(kinds("a{}b") == ["literal:a", "error:{", "error:}", "literal:b"])
+    #expect(kinds("a[]b") == ["literal:a", "error:[", "error:]", "literal:b"])
   }
 
   @Test func danglingPercent() {
     #expect(kinds("a% b%") == ["literal:a", "error:%", "literal:b", "error:%"])
+  }
+
+  @Test func braces() {
+    #expect(
+      kinds("*ɣ{i e}*=y{}") == [
+        "op:*", "literal:ɣ", "braces:{", "literal:i", "literal:e", "braces:}", "op:*", "op:=",
+        "literal:y", "braces:{", "braces:}",
+      ])
   }
 
   @Test func neverFails() {

@@ -32,9 +32,9 @@ struct SindarinTests {
     $plurals = 2
 
     _ = (+ (? $monosyllables &monosyllable $words &word $plurals &plural)
-      > *nr*=ðr *nl*=ll *nm*=mm *nb*=mb *np*=mm *mp*=mm *dl*=ll  ; assimilation
+      > *nr*=ðr *n{l m}*={}{} *n{b p}*=m{b m} *mp*=mm *dl*=ll  ; assimilation
         *au=aw *v=f                       ; final au is written aw, final v is f
-        *þ*=th *ð*=dh *χ*=ch *φ*=ph *ł*=lh *ř*=rh *ƕ*=hw)  ; spell the digraphs
+        *{þ ð χ φ ł ř ƕ}*={th dh ch ph lh rh hw})  ; spell the digraphs
 
     ; Monosyllables. A long vowel here takes a circumflex.
     monosyllable = (?
@@ -60,9 +60,9 @@ struct SindarinTests {
     ; Plurals. The last syllable's vowel changes one way, and the rest another.
     ; Long vowels don't change, so Dúnadan becomes Dúnedain.
     plural = (?
-      1 (+ &onset &short &coda > *a*=ai *o*=y *e*=i *u*=y)
-      3 (+ (+ &onset &pluralVowel (? 3 _ 1 (+ &medial &pluralVowel)) > *a*=e *o*=e *u*=y)
-        (+ &medial &short &coda > *a*=ai *o*=y *e*=i *u*=y)))
+      1 (+ &onset &short &coda > *{a o e u}*={ai y i y})
+      3 (+ (+ &onset &pluralVowel (? 3 _ 1 (+ &medial &pluralVowel)) > *{a o u}*={e e y})
+        (+ &medial &short &coda > *{a o e u}*={ai y i y})))
     pluralVowel = (? 12 &short 2 &long 1 ai)
 
     ; Consonants: at the start of a word, between vowels, at the end, and

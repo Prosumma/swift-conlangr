@@ -26,8 +26,7 @@ struct KlingonTests {
     $nouns = 4
 
     _ = (+ (? $verbs &verb $nouns &noun)
-      > *č*=ch *ɣ*=gh *ŋ*=ng *ƛ*=tlh *ʔ*=%'
-        *ɖ*=D *x*=H *ɪ*=I *χ*=Q *ʂ*=S)
+      > *{č ɣ ŋ ƛ ʔ ɖ x ɪ χ ʂ}*={ch gh ng tlh %' D H I Q S})
 
     ; Verbs: a prefix for the subject and object, the root, suffixes in their
     ; nine types (oneself, volition, change, cause, indefinite subject,

@@ -28,17 +28,17 @@ struct SiniticTests {
     ; and x, add apostrophes, and mark the tones.
 
     _ = (+ &first (? 2 _ 6 &syllable 1 (+ &syllable &syllable))
-      > *.ia*=.ya *.ie*=.ye *.io*=.yo *.i*=.yi            ; zero initials
-        *.ua*=.wa *.uo*=.wo *.ue*=.we *.u*=.wu *.ü*=.yu
-        *io¹u*=iu¹ *io²u*=iu² *io³u*=iu³ *io⁴u*=iu⁴ *io⁰u*=iu⁰  ; iou → iu
-        *ue¹i*=ui¹ *ue²i*=ui² *ue³i*=ui³ *ue⁴i*=ui⁴ *ue⁰i*=ui⁰  ; uei → ui
-        *ue¹n*=u¹n *ue²n*=u²n *ue³n*=u³n *ue⁴n*=u⁴n *ue⁰n*=u⁰n  ; uen → un
-        *jü*=ju *qü*=qu *xü*=xu                             ; ü after j, q, x
-        .*=_ *.a*=%'a *.o*=%'o *.e*=%'e *.*=_               ; apostrophes
-        *a¹*=ā *a²*=á *a³*=ǎ *a⁴*=à *e¹*=ē *e²*=é *e³*=ě *e⁴*=è  ; tones
-        *i¹*=ī *i²*=í *i³*=ǐ *i⁴*=ì *o¹*=ō *o²*=ó *o³*=ǒ *o⁴*=ò
-        *u¹*=ū *u²*=ú *u³*=ǔ *u⁴*=ù *ü¹*=ǖ *ü²*=ǘ *ü³*=ǚ *ü⁴*=ǜ
-        *⁰*=_ *ẑ*=zh *ĉ*=ch *ŝ*=sh *ŋ*=ng)     ; the neutral tone isn't marked
+      > *.i{a e o}*=.y{} *.i*=.yi *.u{a o e}*=.w{} *.u*=.wu *.ü*=.yu  ; zero initials
+        *io{¹ ² ³ ⁴ ⁰}u*=iu{}                     ; iou → iu
+        *ue{¹ ² ³ ⁴ ⁰}i*=ui{}                     ; uei → ui
+        *ue{¹ ² ³ ⁴ ⁰}n*=u{}n                     ; uen → un
+        *{j q x}ü*={}u                            ; ü after j, q, x
+        .*=_ *.{a o e}*=%'{} *.*=_                ; apostrophes
+        *{a e i o u ü}¹*={ā ē ī ō ū ǖ}             ; tones
+        *{a e i o u ü}²*={á é í ó ú ǘ}
+        *{a e i o u ü}³*={ǎ ě ǐ ǒ ǔ ǚ}
+        *{a e i o u ü}⁴*={à è ì ò ù ǜ}
+        *{⁰ ẑ ĉ ŝ ŋ}*={_ zh ch sh ng})             ; the neutral tone isn't marked
 
     ; The first syllable, which can't have the neutral tone.
     first = (+ &syllable - *⁰*)

@@ -45,46 +45,24 @@ enum Quantifier: Sendable {
 /// The steps of a sequence's skips and substitutions, flattened in source order.
 /// `- a b > c=d` is the same as `- a - b > c=d`.
 enum RewriteStep: Sendable {
-  case reject(Pattern)
-  case substitute(Pattern, with: String)
+  case reject(PatternSyntax)
+  case substitute(PatternSyntax, with: [Located<Part>])
 }
 
-struct Pattern: Sendable, Hashable {
-  enum Position: Sendable, Hashable {
-    /// `abc`: the whole word.
-    case whole
-    /// `abc*`
-    case prefix
-    /// `*abc`
-    case suffix
-    /// `*abc*`
-    case anywhere
-  }
+/// A pattern as written: where it must match, and its parts.
+struct PatternSyntax: Sendable {
+  let position: Pattern.Position
+  let parts: [Located<Part>]
+}
 
-  let position: Position
-  let text: String
-
-  func matches(_ word: String) -> Bool {
-    switch position {
-    case .whole: word == text
-    case .prefix: word.hasPrefix(text)
-    case .suffix: word.hasSuffix(text)
-    case .anywhere: word.contains(text)
-    }
-  }
-
-  /// The word with the match replaced, or `nil` if the pattern doesn't match.
-  func substitute(_ replacement: String, in word: String) -> String? {
-    guard matches(word) else {
-      return nil
-    }
-    return switch position {
-    case .whole: replacement
-    case .prefix: replacement + word.dropFirst(text.count)
-    case .suffix: word.dropLast(text.count) + replacement
-    case .anywhere: word.replacing(text, with: replacement)
-    }
-  }
+/// A piece of a pattern or a replacement.
+enum Part: Sendable {
+  case text(String)
+  /// `{a b c}`: one of several alternatives.
+  case choice([Located<String>])
+  /// `{}`: in a pattern, the same text as the class before it matched. In a replacement, the text
+  /// that its class in the pattern matched.
+  case same
 }
 
 /// How a production's name appears in messages. The main production's name is empty,

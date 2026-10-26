@@ -30,13 +30,13 @@ struct OldNorseTests {
     $umlaut = 2       ; how often a noun takes an ending with u, out of 14
 
     _ = (+ (? $nouns &noun $compounds &compound $verbs &verb)
-      > *lθ*=ld *nθ*=nd *mθ*=md                   ; the past's ð is d after l, n and m,
-        *sθ*=st *kθ*=kt *pθ*=pt *tθ*=tt *fθ*=ft    ; and t after a voiceless consonant
-        *álr=áll *élr=éll *ílr=íll *ólr=óll *úlr=úll *ýlr=ýll *ælr=æll  ; a final -r assimilates
-        *ánr=ánn *énr=énn *ínr=ínn *ónr=ónn *únr=únn *einr=einn *sr=s  ; after a long vowel
-        θ*=þ *·θ*=·þ *θ*=ð                         ; þ starts a word or a compound's part
+      > *{l n m}θ*={}d                      ; the past's ð is d after l, n and m,
+        *{s k p t f}θ*={}t                  ; and t after a voiceless consonant
+        *{á é í ó ú ý æ}lr={}ll              ; a final -r assimilates to l or n
+        *{á é í ó ú ei}nr={}nn *sr=s         ; after a long vowel, and is lost after s
+        θ*=þ *·θ*=·þ *θ*=ð                  ; þ starts a word or a compound's part
         *·*=_ *ɑ*=au *ks*=x
-        *sss*=ss *lll*=ll *nnn*=nn *rrr*=rr *ttt*=tt *kkk*=kk *ggg*=gg)  ; no triple consonants
+        *{s l n r t k g}{}{}*={}{})          ; no triple consonants
 
     ; Nouns: a stem and a case ending. With an ending in u, a becomes ǫ.
     noun = (?

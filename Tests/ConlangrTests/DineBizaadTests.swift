@@ -33,12 +33,11 @@ struct DineBizaadTests {
     $nasality = 2     ; how often a stem vowel is nasal, out of 8
 
     _ = (+ (? 4 &plainWord 2 &frontWord 2 &backWord)
-      - nn* nm* nʔ* nh* nʍ* ny* nw* nb* ng* nɣ* nk*  ; a syllabic n needs a consonant it can join
-      > *ɣi*=yi *ɣí*=yí *ɣį*=yį *ɣį́*=yį́     ; ɣ is written y before i and e,
-        *ɣe*=ye *ɣé*=yé *ɣę*=yę *ɣę́*=yę́
-        *ɣo*=wo *ɣó*=wó *ɣǫ*=wǫ *ɣǫ́*=wǫ́     ; w before o,
-        *ɣ*=gh                              ; and gh before a
-        *ʔ*=%' *ʼ*=%' *ʃ*=sh *ʒ*=zh *ʧ*=ch *ʦ*=ts *ʣ*=dz *ƛ*=tł *λ*=dl *ʍ*=hw *kʷ*=kw)
+      - n{n m ʔ h ʍ y w b g ɣ k}*               ; a syllabic n needs a consonant it can join
+      > *ɣ{i í į į́ e é ę ę́}*=y{}                 ; ɣ is written y before i and e,
+        *ɣ{o ó ǫ ǫ́}*=w{}                         ; w before o,
+        *ɣ*=gh                                   ; and gh before a
+        *{ʔ ʼ ʃ ʒ ʧ ʦ ʣ ƛ λ ʍ kʷ}*={%' %' sh zh ch ts dz tł dl hw kw})
 
     ; A noun is a stem, with or without a possessor. A verb is one or more
     ; prefixes and a stem. Before a front sibilant, "my" is si-, not ʃi-.

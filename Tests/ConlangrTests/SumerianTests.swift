@@ -29,10 +29,8 @@ struct SumerianTests {
     $verbs = 4
 
     _ = (+ (? $nouns &noun $gods &god $verbs &verb)
-      > *b·ª*=b·ba *d·ª*=d·da *g·ª*=g·ga *k·ª*=k·ka *l·ª*=l·la *m·ª*=m·ma   ; -a after a
-        *n·ª*=n·na *r·ª*=r·ra *s·ª*=s·sa *š·ª*=š·ša *z·ª*=z·za *ĝ·ª*=ĝ·ĝa   ; consonant
-        *ḫ·ª*=ḫ·ḫa *p·ª*=p·pa *t·ª*=t·ta *ª*=a
-        *·*=%-)
+      > *{b d g k l m n r s š z ĝ ḫ p t}·ª*={}·{}a   ; -a after a consonant repeats it
+        *ª*=a *·*=%-)
 
     ; Nouns: a root, then plural, possessive and case.
     noun = (+ &nounRoot
