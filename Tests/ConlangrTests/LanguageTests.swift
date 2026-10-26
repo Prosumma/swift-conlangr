@@ -273,6 +273,54 @@ struct ClassTests {
   }
 }
 
+struct RuleSetTests {
+  @Test func appliesItsRulesInOrder() throws {
+    let source = """
+      @spelling = (> *a*=b *b*=c)
+      _ = (+ a @spelling)
+      """
+    #expect(try word(source) == "c")
+  }
+
+  @Test func canBeDefinedAfterItsUse() throws {
+    #expect(try word("_ = (+ ŋa @spelling)\n@spelling = (> *ŋ*=ng)") == "nga")
+  }
+
+  @Test func skipsAndSubstitutionsTogether() throws {
+    let source = """
+      @rules = (- *q* > *ŋ*=ng)
+      _ = (+ (? ŋa qa) @rules)
+      """
+    #expect(try words(source) == ["nga"])
+  }
+
+  @Test func mixesWithOtherSteps() throws {
+    // A rule set can go inside a "-" or ">" block, which carries on after it.
+    let source = """
+      @double = (> *b*=bb)
+      _ = (+ a > *a*=b @double *bb*=cb - *x* @double)
+      """
+    #expect(try word(source) == "cbb")
+  }
+
+  @Test func includesOtherRuleSets() throws {
+    let source = """
+      @first = (> *a*=b)
+      @both = (@first > *b*=c)
+      _ = (+ aa @both)
+      """
+    #expect(try word(source) == "cc")
+  }
+
+  @Test func reusable() throws {
+    let source = """
+      @plural = (> *{a o}={e i})
+      _ = (? (+ kala @plural) (+ toro @plural))
+      """
+    #expect(try words(source) == ["kale", "tori"])
+  }
+}
+
 struct VariableTests {
   @Test func weight() throws {
     let tally = try tally("$w = 3\n_ = (? $w a b)")

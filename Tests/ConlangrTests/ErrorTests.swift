@@ -31,8 +31,30 @@ struct SyntaxErrorTests {
     ("_ = (? a\n  b", "2:4: Expected \")\"."),
     ("_ = (? a = b)", "1:10: Expected \")\"."),
     ("_ = (? 3)", "1:9: Expected a production after the quantifier."),
-    ("_ = (? a - b)", "1:10: Skips (-) and substitutions (>) can only appear in (+ ...)."),
-    ("_ = (? a > b=c)", "1:10: Skips (-) and substitutions (>) can only appear in (+ ...)."),
+    (
+      "_ = (? a - b)",
+      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
+    ),
+    (
+      "_ = (? a > b=c)",
+      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
+    ),
+    (
+      "_ = (? a @x)",
+      "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
+    ),
+    ("_ = (+ a @)", "1:11: Expected a rule set name after \"@\"."),
+    ("_ = (+ a - *a*@x)", "1:15: Patterns must be separated by whitespace."),
+    ("_ = (+ a - @x*a*)", "1:14: Patterns must be separated by whitespace."),
+    ("_ = (+ a - @x{a b})", "1:14: Patterns must be separated by whitespace."),
+    ("_ = (+ a > a=b @x*b*=c)", "1:18: Patterns must be separated by whitespace."),
+    ("_ = (+ a @x*b*)", "1:12: Patterns must be separated by whitespace."),
+    ("@x = (@y*a*)\n_ = a", "1:9: Patterns must be separated by whitespace."),
+    ("@x (> a=b)", "1:4: Expected \"=\" after the rule set's name."),
+    ("@x = > a=b", "1:6: Expected \"(\" after \"=\". A rule set's steps go in parentheses."),
+    ("@x = ()", "1:7: Expected skips (-), substitutions (>) or rule sets (@) after \"(\"."),
+    ("@x = (> a=b", "1:12: Expected \")\"."),
+    ("@x = (> a=b &y)", "1:13: Expected \")\"."),
     ("_ = (+ a (? b c)", "1:17: Expected \")\"."),
     ("_ = (+ a (? b c", "1:16: Expected \")\"."),
     // Rewrites
@@ -111,10 +133,21 @@ struct SyntaxErrorTests {
     #expect(problems == [])
   }
 
-  /// Names made of letters, since digits are reserved: 0 → "a", 26 → "ba".
-  func letters(_ n: Int) -> String {
-    let letter = String(UnicodeScalar(UInt8(97 + n % 26)))
-    return n < 26 ? letter : letters(n / 26) + letter
+  @Test func longRuleSetChainCompilesOnASmallStack() async throws {
+    // A chain is flat, so it isn't limited by nesting, only by the length of the script.
+    let length = 2_000
+    let chain = (0..<length).map { "@\(letters($0)) = (@\(letters($0 + 1)))" }
+    let source =
+      (chain + ["@\(letters(length)) = (> *a*=b)", "_ = (+ a @\(letters(0)))"]).joined(
+        separator: "\n")
+    let problems = await withCheckedContinuation { continuation in
+      let thread = Thread {
+        continuation.resume(returning: diagnostics(source).map(\.problem))
+      }
+      thread.stackSize = 512 * 1024
+      thread.start()
+    }
+    #expect(problems == [])
   }
 
   @Test func locationRange() throws {
@@ -165,6 +198,64 @@ struct CompileErrorTests {
     #expect(
       messages("$w = 1\n_ = (? $w a b)", overrides: ["v": 2]) == [
         "An override was given for \"$v\", but the script doesn't declare it."
+      ])
+  }
+
+  @Test func undefinedRuleSet() {
+    #expect(messages("_ = (+ a @spelling)") == ["1:10: There is no rule set named \"@spelling\"."])
+  }
+
+  @Test func duplicateRuleSet() {
+    // The duplicate is still checked.
+    #expect(
+      messages("@x = (> a=b)\n_ = (+ a @x)\n@x = (> *_*=c)") == [
+        "3:1: The rule set \"@x\" is already defined.",
+        "3:9: A pattern anchored with \"*\" must have some text.",
+      ])
+  }
+
+  @Test func ruleSetIncludesItself() {
+    #expect(
+      messages("@x = (> a=b @x)\n_ = a") == [
+        "1:13: The rule set \"@x\" can't include itself, directly or through another rule set."
+      ])
+    #expect(
+      messages("@x = (@y)\n@y = (@x)\n_ = (+ a @x)") == [
+        "2:7: The rule set \"@x\" can't include itself, directly or through another rule set."
+      ])
+  }
+
+  @Test func tooManyRewrites() {
+    // Each rule set uses the one before twice, so the last would have 2^40 substitutions.
+    let doubling = (1...40).map { "@\(letters($0)) = (@\(letters($0 - 1)) @\(letters($0 - 1)))" }
+    let source = (["@a = (> *a*=b)"] + doubling + ["_ = (+ a @\(letters(40)))"]).joined(
+      separator: "\n")
+    // Only the rule set that first goes over is reported, at the step that takes it over.
+    #expect(
+      messages(source) == [
+        "12:10: This makes more than 1024 skips and substitutions in one place, counting those of the rule sets used."
+      ])
+    let inline = "_ = (+ a > " + String(repeating: "*a*=a ", count: 1_025) + ")"
+    #expect(
+      messages(inline) == [
+        "1:\(12 + 6 * 1_024): This makes more than 1024 skips and substitutions in one place, counting those of the rule sets used."
+      ])
+    let atTheLimit = "_ = (+ a > " + String(repeating: "*a*=a ", count: 1_024) + ")"
+    #expect(messages(atTheLimit) == [])
+  }
+
+  @Test func problemsInARuleSetAreReportedOnce() {
+    #expect(
+      messages("@x = (- *_*)\n_ = (? (+ a @x) (+ b @x))") == [
+        "1:9: A pattern anchored with \"*\" must have some text."
+      ])
+  }
+
+  @Test func unusedRuleSetIsChecked() {
+    #expect(
+      messages("@x = (- *_* @y)\n_ = a") == [
+        "1:9: A pattern anchored with \"*\" must have some text.",
+        "1:13: There is no rule set named \"@y\".",
       ])
   }
 
@@ -457,4 +548,10 @@ struct GenerationErrorTests {
       #expect(try generator.generate(using: &random) == "")
     }
   }
+}
+
+/// Names made of letters, since digits are reserved: 0 → "a", 26 → "ba".
+func letters(_ n: Int) -> String {
+  let letter = String(UnicodeScalar(UInt8(97 + n % 26)))
+  return n < 26 ? letter : letters(n / 26) + letter
 }

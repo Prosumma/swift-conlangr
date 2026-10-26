@@ -57,10 +57,19 @@ extension Diagnostic {
     case duplicateProduction(String)
     /// A variable is declared more than once.
     case duplicateVariable(String)
+    /// A rule set is defined more than once.
+    case duplicateRuleSet(String)
     /// `&name` refers to a production that isn't defined.
     case undefinedProduction(String)
     /// `$name` refers to a variable that isn't declared.
     case undefinedVariable(String)
+    /// `@name` refers to a rule set that isn't defined.
+    case undefinedRuleSet(String)
+    /// A rule set includes itself, directly or through other rule sets.
+    case ruleSetIncludesItself(String)
+    /// A sequence or rule set has more than `Generator.maximumRewrites` skips and substitutions,
+    /// counting those of the rule sets it uses.
+    case tooManyRewrites
     /// `Script.compile(overrides:)` was given a variable that the script doesn't declare.
     case unknownOverride(String)
     /// A weight, repeat count or variable is larger than 255.
@@ -104,6 +113,14 @@ extension Diagnostic {
         "The production \"\(display(name))\" is already defined."
       case .duplicateVariable(let name):
         "The variable \"$\(name)\" is already declared."
+      case .duplicateRuleSet(let name):
+        "The rule set \"@\(name)\" is already defined."
+      case .undefinedRuleSet(let name):
+        "There is no rule set named \"@\(name)\"."
+      case .ruleSetIncludesItself(let name):
+        "The rule set \"@\(name)\" can't include itself, directly or through another rule set."
+      case .tooManyRewrites:
+        "This makes more than \(Generator.maximumRewrites) skips and substitutions in one place, counting those of the rule sets used."
       case .undefinedProduction(let name):
         "There is no production named \"\(display(name))\"."
       case .undefinedVariable(let name):

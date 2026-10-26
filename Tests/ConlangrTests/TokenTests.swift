@@ -16,6 +16,15 @@ struct TokenTests {
       ])
   }
 
+  @Test func ruleSets() {
+    #expect(
+      kinds("@x = (> a=b)\n_ = (+ a @x)") == [
+        "op:@", "literal:x", "op:=", "parens:(", "op:>", "literal:a", "op:=", "literal:b",
+        "parens:)", "literal:", "op:=", "parens:(", "op:+", "literal:a", "op:@", "literal:x",
+        "parens:)",
+      ])
+  }
+
   @Test func ranges() {
     let source = "x = %(ab ; c"
     let tokens = tokenize(source)
@@ -42,7 +51,7 @@ struct TokenTests {
   @Test func neverFails() {
     #expect(tokenize("").isEmpty)
     #expect(tokenize("  \n\t ").isEmpty)
-    #expect(kinds("@!^'\":#<[]") == "@!^'\":#<[]".map { "error:\($0)" })
+    #expect(kinds("!^'\":#<[]") == "!^'\":#<[]".map { "error:\($0)" })
   }
 
   @Test func acceptsScriptsThatDoNotParse() {

@@ -39,7 +39,7 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 `String` →`Script(_:)`→ `Script` →`compile(overrides:)`→ `Generator` →`generate()`→ `String`
 
 - **Parsing** (`Grammar`) produces a syntax tree that records what was written: numbers stay as digit strings, names aren't resolved, and anything a diagnostic could point at is `Located`. A syntax error becomes a `ScriptError` with a single `.syntax` diagnostic. Before parsing, `Script.checkNesting` rejects groups nested too deeply, also with a single diagnostic (see "Stack safety").
-- **Compiling** (`Compiler`) resolves variables and names, lowers the tree to `Node`s, and collects *every* problem as a `Diagnostic` before throwing. Lowering always returns a node, using a placeholder after an error, so it can keep going and find more. The termination check runs only when nothing else is wrong.
+- **Compiling** (`Compiler`) resolves variables and names, lowers the tree to `Node`s, and collects *every* problem as a `Diagnostic` before throwing. Lowering always returns a node, using a placeholder after an error, so it can keep going and find more. The termination check runs only when nothing else is wrong. Rule sets are compiled once each, before any production, including those nothing uses, so their problems are reported once. Their rewrites are spliced into each sequence that uses them, so `Node` has no notion of a rule set. Splicing copies, so `Generator.maximumRewrites` caps a sequence's or rule set's rewrites: rule sets that each use the one before twice would otherwise double with every level.
 - **Generating** (`Evaluation`) walks the `Node`s.
 
 The public API never exposes Parsimonious types. Keep it that way, so that Parsimonious can change without breaking Conlangr's users.
@@ -56,10 +56,11 @@ The user prefers type-driven design (see `../../CLAUDE.md`). These invariants ar
 
 ## Grammar conventions
 
-- **Commit once a construct has started.** For example, `(`, `&`, `*`, `$`, `%`, `-`, and `>` each commit what follows them, and definitions use `commit1()`. Without that, Parsimonious backtracks and reports "No alternative matched." at the start of the line. If a new error test shows that message, there's a missing commit or `expecting`.
+- **Commit once a construct has started.** For example, `(`, `&`, `*`, `$`, `@`, `%`, `-`, and `>` each commit what follows them, and definitions use `commit1()`. Without that, Parsimonious backtracks and reports "No alternative matched." at the start of the line. If a new error test shows that message, there's a missing commit or `expecting`.
 - **Name recognizable mistakes** with `peek()` followed by `fail(...).commit()`. `strayQuantifier` and `misplacedRewrite` work this way.
 - **Messages** are full sentences ending in a period, with straight double quotes around source text, like Parsimonious's own messages (`Expected ")".`).
 - The grammar is recursive through `Grammar.expression`, a closure-based `Parser`. All parsers must stay `static let`s, which Swift initializes lazily (see Parsimonious's README, "Recursion").
+- **A rule set's steps need parentheses.** `@x = > a=b` followed by `y = c` on the next line would parse `y = c` as a substitution, since whitespace may surround the `=` in both. Keep any new definition kind that holds rewrites delimited.
 - `Grammar.reserved` lists the characters that can't appear unescaped in text. Several are unused and set aside for future syntax. If you add syntax, take characters from that set, and update both the grammar and `Lexicon`.
 - Whitespace is `Parsers.whitespace`, meaning every scalar is whitespace, and `Grammar.isSpace` matches it. A space followed by a combining mark counts as text.
 
@@ -68,6 +69,7 @@ The user prefers type-driven design (see `../../CLAUDE.md`). These invariants ar
 No input may crash the process, including on a secondary thread's 512 KB stack.
 
 - **Parsing is recursive, so nesting is limited.** Each level of parentheses costs about 21 KB of stack in a debug build, because it passes through many Parsimonious closures. On a 512 KB thread (a secondary thread's default), 20 levels parsed and 24 crashed in debug, and 40 crashed in release. `Script.checkNesting` counts parentheses with `tokenize`, which doesn't recurse, and rejects anything over `Script.maximumNesting` (12) before the parser runs. References don't nest, so deep structure is still possible. The compiler's tree walks (`lower`, `canFinish`, `references`) are recursive too, but they stop at references, so the same limit bounds them. If you change the grammar's layering, re-measure: `maximumNestingParsesOnASmallStack` checks the margin.
+- **Rule sets are compiled with an explicit stack.** A chain of rule sets, each using the next, is flat, so nesting doesn't limit it, only the length of the source. Compiled recursively, a chain of 400 overflowed a 512 KB stack in debug. `Compiler.compileRuleSets` keeps a stack of frames instead: a rule set that uses an uncompiled one waits there while that one is compiled, and one that's waiting is how a rule set that includes itself is caught. `longRuleSetChainCompilesOnASmallStack` checks it.
 - `Evaluation.produce` is **iterative, not recursive**. A recursive version overflowed the stack on Swift Testing's threads in debug builds, even with a depth limit of 256. References and selects are tail calls. Only sequences push a `SequenceState`, and each push costs a step, so `Generator.maximumSteps` bounds the explicit stack. Don't reintroduce recursion.
 
 ## Generation

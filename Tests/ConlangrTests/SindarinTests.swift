@@ -60,10 +60,12 @@ struct SindarinTests {
     ; Plurals. The last syllable's vowel changes one way, and the rest another.
     ; Long vowels don't change, so Dúnadan becomes Dúnedain.
     plural = (?
-      1 (+ &onset &short &coda > *{a o e u}*={ai y i y})
-      3 (+ (+ &onset &pluralVowel (? 3 _ 1 (+ &medial &pluralVowel)) > *{a o u}*={e e y})
-        (+ &medial &short &coda > *{a o e u}*={ai y i y})))
+      1 (+ &onset &short &coda @final)
+      3 (+ (+ &onset &pluralVowel (? 3 _ 1 (+ &medial &pluralVowel)) @inner)
+        (+ &medial &short &coda @final)))
     pluralVowel = (? 12 &short 2 &long 1 ai)
+    @final = (> *{a o e u}*={ai y i y})   ; adan → edain, orch → yrch
+    @inner = (> *{a o u}*={e e y})        ; amon → emyn
 
     ; Consonants: at the start of a word, between vowels, at the end, and
     ; where an element like -dor joins. Only an onset has ł, ř or ƕ.

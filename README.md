@@ -71,11 +71,13 @@ A syntax error stops parsing, so it's always the only diagnostic. So is nesting 
 
 ## The language
 
-A script is a list of definitions in any order. A definition assigns a production to a name:
+A script is a list of definitions in any order. Most definitions assign a production to a name:
 
 ```
 name = production
 ```
+
+Two other kinds of definition name a number, `$name = 3` (see [Variables](#variables)), and a set of rewrites, `@name = (…)` (see [Rule sets](#rule-sets)).
 
 The production named `_` is the main production, and it's where generation starts. Every script must have exactly one. The other productions are referred to by name with `&`. Whitespace, including newlines, only separates things, and a `;` starts a comment that runs to the end of the line.
 
@@ -196,6 +198,27 @@ A mapped alternative can be `_`, which deletes what it replaces: `*{⁰ ŋ}*={_ 
 
 Since a class maps every match in a single pass, it can express a chain shift, where one sound becomes another that's itself changing. `*{k t}*={ʔ k}` turns *taku* into *kaʔu*. As two separate substitutions, `*k*=ʔ *t*=k` would only work in that order. In the other order, every *t* would become *k* and then *ʔ*.
 
+#### Rule sets
+
+A **rule set** gives a name to skips and substitutions, so that more than one concat can use them. Define it with `@` and put its blocks in parentheses:
+
+```
+@spelling = (> *ŋ*=ng *ʔ*=ʻ)
+@final = (- *{a e i o u}{}{}* > *h=_)
+```
+
+Then write `@name` anywhere a skip or substitution can go, and it stands for the rule set's rewrites, in order:
+
+```
+ancestor = (+ &word @spelling)
+descendant = (+ &word @soundChanges @spelling)
+plural = (+ &word > *a*=e @spelling *x*=ks)   ; in a block, which carries on after it
+```
+
+A rule set can use other rule sets, but not itself, directly or through another rule set. Like productions, rule sets can be defined anywhere in the script, and each name can be defined only once. Their names are separate from productions' and variables', so `@word`, `&word` and `$word` can all exist.
+
+The parentheses are required. Without them, a definition on the next line, such as `x = a`, would read as one more substitution.
+
 ### Variables
 
 Variables let you change weights and repeat counts without editing the productions. Declare a variable with `$`, and use it anywhere a number can go:
@@ -225,9 +248,12 @@ Compiling catches these problems before any word is generated, each reported as 
 | Problem | Example |
 |---|---|
 | `missingMain` | no `_ = …` |
-| `duplicateProduction`, `duplicateVariable` | `x` or `$n` defined twice |
+| `duplicateProduction`, `duplicateVariable`, `duplicateRuleSet` | `x`, `$n` or `@r` defined twice |
 | `undefinedProduction` | `&vowl` when there's no `vowl`, even on a branch that's rarely chosen |
 | `undefinedVariable` | `$n` when there's no `$n = …` |
+| `undefinedRuleSet` | `@r` when there's no `@r = (…)` |
+| `ruleSetIncludesItself` | `@r = (> a=b @r)`, or two rule sets that use each other |
+| `tooManyRewrites` | more than 1,024 skips and substitutions in one concat or rule set, counting those of the rule sets it uses |
 | `unknownOverride` | an override for a variable the script doesn't declare |
 | `numberTooLarge` | a weight, repeat count, or variable above 255 |
 | `textTooLong` | a literal, pattern, or replacement longer than 64 characters |
@@ -252,6 +278,8 @@ Groups can be nested at most 12 deep within one definition (`Script.maximumNesti
 inner = (? a b)
 _ = (+ x &inner y)      ; rather than (+ x (? a b) y), when the nesting gets deep
 ```
+
+A concat or rule set can have at most 1,024 skips and substitutions (`Generator.maximumRewrites`), counting those of the rule sets it uses. Rule sets can use each other as deeply as you like, but since each use stands for all of a rule set's rewrites, rule sets that each use the one before twice would otherwise double with every one.
 
 Some grammars can only be judged by running them, so `generate()` has two safeguards:
 
@@ -290,7 +318,7 @@ A rewrite can't depend on what else is in the word, so it can't enforce agreemen
 
 ### Name things instead of nesting them
 
-A reference doesn't count toward the nesting limit, and a name documents what a group is for. When a production gets hard to read, move its inner groups into productions of their own.
+A reference doesn't count toward the nesting limit, and a name documents what a group is for. When a production gets hard to read, move its inner groups into productions of their own. Likewise, when two concats need the same rewrites, give the rewrites a name with a rule set rather than repeating them.
 
 ## More examples
 
@@ -299,10 +327,10 @@ Each of these test files holds a grammar for a language inspired by a real or in
 | File | Inspired by | Shows |
 |---|---|---|
 | `QuenyaTests.swift` | Tolkien's Quenya | Diaeresis and c/qu/x spelled at the end; plurals in -r and -i by ordered substitutions |
-| `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest; digraphs as single letters |
+| `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest, as rule sets; digraphs as single letters |
 | `OldNorseTests.swift` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
 | `IndoEuropeanTests.swift` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
-| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates |
+| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates; rule sets shared by two languages |
 | `SiniticTests.swift` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
 | `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
 | `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |

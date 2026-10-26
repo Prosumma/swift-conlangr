@@ -9,7 +9,7 @@ typealias SourceParser<Output> = Parser<String, Output>
 /// The grammar is recursive through `expression`, so these must stay `static let`s.
 enum Grammar {
   /// Characters that can't appear in text without a `%` in front of them. Some aren't used
-  /// yet and are set aside for the future: `[ ] @ ! ^ ' " : # <`.
+  /// yet and are set aside for the future: `[ ] ! ^ ' " : # <`.
   static let reserved = Set("(){}[]+?&-$@!^*='\":;#0123456789<>")
 
   /// Whether `c` is entirely whitespace. Matches `Parsers.whitespace`, so a space followed by
@@ -71,8 +71,9 @@ enum Grammar {
 
   static let close = char(")")
   static let misplacedRewrite: SourceParser<Character> =
-    char(anyOf: "->").peek()
-    *> fail("Skips (-) and substitutions (>) can only appear in (+ ...).").commit()
+    char(anyOf: "->@").peek()
+    *> fail("Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...).")
+    .commit()
   static let select =
     (char("?") *> gap *> items.map { Expression.select($0) }
     <* (close <|> misplacedRewrite).expecting("Expected \")\"."))
@@ -103,13 +104,19 @@ enum Grammar {
   /// Requires whitespace after a pattern or replacement, so that `*a*b` and `*a*{b c}` are
   /// errors rather than two patterns.
   static let separated =
-    (char("*") <|> char("%") <|> char("{") <|> plain).not()
+    (char("*") <|> char("%") <|> char("{") <|> char("@") <|> plain).not()
     .expecting("Patterns must be separated by whitespace.")
     .commit()
+  static let ruleSetName =
+    char("@") *> text.expecting("Expected a rule set name after \"@\".").commit()
+  /// `@name`, which can appear anywhere a skip or substitution can.
+  static let ruleSet =
+    ruleSetName.captured().map { Located(RewriteStep.ruleSet($0.value), $1) } <* separated
+  static let rejection =
+    pattern.captured().map { Located(RewriteStep.reject($0), $1) } <* separated <|> ruleSet
   static let rejections =
     char("-") *> gap
-    *> (pattern.captured().map { Located(RewriteStep.reject($0), $1) } <* separated <* gap)+
-    .expecting("Expected a pattern after \"-\".").commit()
+    *> (rejection <* gap)+.expecting("Expected a pattern after \"-\".").commit()
   static let substitution =
     tuple(
       pattern <* gap <* char("=") <* gap,
@@ -123,8 +130,10 @@ enum Grammar {
     .commit1()
   static let substitutions =
     char(">") *> gap
-    *> (substitution <* gap)+.expecting("Expected a substitution after \">\".").commit()
-  static let rewrites = flatten((rejections <|> substitutions)*)
+    *> ((substitution <|> ruleSet) <* gap)+.expecting("Expected a substitution after \">\".")
+    .commit()
+  static let steps = rejections <|> substitutions <|> (ruleSet <* gap).map { [$0] }
+  static let rewrites = flatten(steps*)
   static let sequence =
     (char("+") *> gap *> tuple(items, rewrites).map { Expression.sequence($0, $1) } <* close)
     .commit1()
@@ -164,7 +173,22 @@ enum Grammar {
   }
   .commit1()
 
-  static let definition = variableDefinition <|> productionDefinition
+  /// `@name = (...)`. A rule set's steps need parentheses around them, since without them,
+  /// a definition on the next line would read as more substitutions.
+  static let ruleSetDefinition =
+    tuple(
+      ruleSetName.captured().map { Located($0.value, $1) } <* gap
+        <* char("=").expecting("Expected \"=\" after the rule set's name.") <* gap,
+      (char("(") *> gap
+        *> flatten(steps+).expecting(
+          "Expected skips (-), substitutions (>) or rule sets (@) after \"(\".")
+        <* close.expecting("Expected \")\"."))
+        .expecting("Expected \"(\" after \"=\". A rule set's steps go in parentheses.")
+    )
+    .map { Definition.ruleSet(name: $0, steps: $1) }
+    .commit1()
+
+  static let definition = variableDefinition <|> ruleSetDefinition <|> productionDefinition
   static let script =
     gap *> (definition <* gap)*
     <* Parsers<String>.end.expecting(

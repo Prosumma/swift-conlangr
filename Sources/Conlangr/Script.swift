@@ -82,6 +82,8 @@ struct Compiler {
   /// The value of each declared variable whose value is valid.
   var variables: [String: UInt8] = [:]
   var indices: [String: Int] = [:]
+  /// Each rule set's rewrites, or `nil` if it has problems, which have been reported.
+  var ruleSets: [String: [Rewrite]?] = [:]
 
   init(source: String) {
     self.source = source
@@ -93,6 +95,8 @@ struct Compiler {
     var productions: [Located<Expression>] = []
     // Duplicates aren't used, but they're still checked, so every problem is reported at once.
     var duplicates: [Located<Expression>] = []
+    var ruleSetDefinitions: [(name: String, steps: [Located<RewriteStep>])] = []
+    var duplicateRuleSets: [[Located<RewriteStep>]] = []
     for definition in definitions {
       switch definition {
       case .variable(let name, let value):
@@ -110,6 +114,13 @@ struct Compiler {
         }
         indices[name.value] = productions.count
         productions.append(expression)
+      case .ruleSet(let name, let steps):
+        guard !ruleSetDefinitions.contains(where: { $0.name == name.value }) else {
+          report(.duplicateRuleSet(name.value), at: name.range)
+          duplicateRuleSets.append(steps)
+          continue
+        }
+        ruleSetDefinitions.append((name.value, steps))
       }
     }
     for (name, value) in overrides.sorted(by: { $0.key < $1.key }) {
@@ -124,6 +135,10 @@ struct Compiler {
       report(.missingMain)
     }
 
+    compileRuleSets(ruleSetDefinitions)
+    for steps in duplicateRuleSets {
+      _ = rewrites(steps)
+    }
     let rules = productions.map { lower($0) }
     for duplicate in duplicates {
       _ = lower(duplicate)
@@ -182,10 +197,10 @@ struct Compiler {
         }
         return repetition
       }
-      let rewrites = steps.compactMap { rewrite($0) }
+      let rewrites = rewrites(steps)
       // An invalid item or rewrite was dropped and reported. Don't build a sequence without it,
       // since the generator assumes a sequence has every item, and at least one.
-      guard repetitions.count == items.count, rewrites.count == steps.count else {
+      guard repetitions.count == items.count, let rewrites else {
         return .literal("")
       }
       return .sequence(repetitions, rewrites)
@@ -230,12 +245,95 @@ struct Compiler {
 
   // MARK: Rewrites
 
-  /// Compiles a skip or substitution, or returns `nil` if it has problems, which have been
-  /// reported.
-  mutating func rewrite(_ step: Located<RewriteStep>) -> Rewrite? {
+  /// Compiles every rule set, so that sequences can use them.
+  ///
+  /// Rule sets can use each other in a chain as long as the script, which nesting doesn't limit,
+  /// so this keeps a stack of its own rather than recursing. A rule set that uses one that isn't
+  /// compiled yet waits on the stack while that one is compiled. One that uses a rule set
+  /// that's still waiting includes itself.
+  mutating func compileRuleSets(_ definitions: [(name: String, steps: [Located<RewriteStep>])]) {
+    enum State {
+      case uncompiled([Located<RewriteStep>])
+      case compiling
+    }
+    struct Frame {
+      let name: String
+      let steps: [Located<RewriteStep>]
+      var next = 0
+      var compiled: [Rewrite]? = []
+    }
+    var states: [String: State] = [:]
+    for (name, steps) in definitions {
+      states[name] = .uncompiled(steps)
+    }
+    for (name, steps) in definitions where ruleSets[name] == nil {
+      states[name] = .compiling
+      var stack = [Frame(name: name, steps: steps)]
+      resume: while var frame = stack.popLast() {
+        while frame.next < frame.steps.count {
+          let step = frame.steps[frame.next]
+          if case .ruleSet(let included) = step.value, ruleSets[included] == nil {
+            switch states[included] {
+            case .uncompiled(let steps):
+              // Come back to this step once the included rule set is compiled.
+              states[included] = .compiling
+              stack += [frame, Frame(name: included, steps: steps)]
+              continue resume
+            case .compiling:
+              report(.ruleSetIncludesItself(included), at: step.range)
+              frame.compiled = nil
+            case nil:
+              report(.undefinedRuleSet(included), at: step.range)
+              frame.compiled = nil
+            }
+          } else {
+            append(rewrites(step), to: &frame.compiled, at: step.range)
+          }
+          frame.next += 1
+        }
+        ruleSets[frame.name] = .some(frame.compiled)
+      }
+    }
+  }
+
+  /// Compiles skips, substitutions and rule sets, or returns `nil` if any of them has problems,
+  /// which have been reported.
+  mutating func rewrites(_ steps: [Located<RewriteStep>]) -> [Rewrite]? {
+    var compiled: [Rewrite]? = []
+    for step in steps {
+      append(rewrites(step), to: &compiled, at: step.range)
+    }
+    return compiled
+  }
+
+  /// Appends the rewrites of `step` to `compiled`, or sets it to `nil` if either has problems or
+  /// there would be more than `Generator.maximumRewrites`.
+  mutating func append(
+    _ step: [Rewrite]?, to compiled: inout [Rewrite]?, at range: Range<String.Index>
+  ) {
+    guard let step, let count = compiled?.count else {
+      compiled = nil
+      return
+    }
+    guard count + step.count <= Generator.maximumRewrites else {
+      report(.tooManyRewrites, at: range)
+      compiled = nil
+      return
+    }
+    compiled? += step
+  }
+
+  /// Compiles one step: a skip or substitution, or a rule set's rewrites.
+  mutating func rewrites(_ step: Located<RewriteStep>) -> [Rewrite]? {
     switch step.value {
+    case .ruleSet(let name):
+      guard let rewrites = ruleSets[name] else {
+        report(.undefinedRuleSet(name), at: step.range)
+        return nil
+      }
+      return rewrites
     case .reject(let syntax):
-      return pattern(syntax, at: step.range).compiled.map { .reject($0) }
+      return pattern(syntax, at: step.range).compiled.map { [.reject($0)] }
     case .substitute(let syntax, let parts):
       // Check the replacement even if the pattern has problems, to find all of them at once.
       let (pattern, classes) = pattern(syntax, at: step.range)
@@ -243,7 +341,7 @@ struct Compiler {
       guard let pattern, let replacement else {
         return nil
       }
-      return .substitute(pattern, replacement)
+      return [.substitute(pattern, replacement)]
     }
   }
 

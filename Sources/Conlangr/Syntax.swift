@@ -20,6 +20,7 @@ struct Located<Value: Sendable>: Sendable {
 enum Definition: Sendable {
   case variable(name: Located<String>, value: Located<String>)
   case production(name: Located<String>, expression: Located<Expression>)
+  case ruleSet(name: Located<String>, steps: [Located<RewriteStep>])
 }
 
 indirect enum Expression: Sendable {
@@ -42,11 +43,13 @@ enum Quantifier: Sendable {
   case variable(String)
 }
 
-/// The steps of a sequence's skips and substitutions, flattened in source order.
+/// The steps of a sequence's or rule set's skips and substitutions, flattened in source order.
 /// `- a b > c=d` is the same as `- a - b > c=d`.
 enum RewriteStep: Sendable {
   case reject(PatternSyntax)
   case substitute(PatternSyntax, with: [Located<Part>])
+  /// `@name`: the steps of a rule set.
+  case ruleSet(String)
 }
 
 /// A pattern as written: where it must match, and its parts.

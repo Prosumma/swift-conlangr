@@ -14,6 +14,10 @@ public struct Generator: Sendable {
   /// The number of steps one word may take. Each reference, each select, and each attempt at
   /// a sequence (including attempts that a skip rejects) is a step.
   public static let maximumSteps = 65_535
+  /// The number of skips and substitutions one sequence may have, counting those of the rule
+  /// sets it uses. Without a limit, rule sets that each use the one before twice would double
+  /// with every one.
+  public static let maximumRewrites = 1_024
 
   /// Parses and compiles `source`. See `Script.compile(overrides:)`.
   public init(_ source: String, overrides: [String: UInt8] = [:]) throws(ScriptError) {

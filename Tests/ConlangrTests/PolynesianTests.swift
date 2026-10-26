@@ -14,16 +14,20 @@ import Testing
 ///   into h, ŋ into n, r into l, and v into w. So the ancestor's taŋata becomes kanaka, and its 13
 ///   consonants become Hawaiian's eight.
 ///
-/// The ancestral forms are the grammar's idealized form, and the sound changes are a single
-/// substitution whose class maps every sound at once. Applied one at a time, k → ʔ and t → k
+/// The ancestral forms are the grammar's idealized form, and the sound changes are a rule set
+/// with a single substitution, whose class maps every sound at once. Applied one at a time, k → ʔ and t → k
 /// would have to be carefully ordered, or every t would end up as ʔ. Conlangr can't copy what it
 /// generates, so there's no reduplication, which Polynesian languages use a great deal.
 struct PolynesianTests {
-  /// The descendant's sound changes, all at once.
-  static let soundChanges = "*{ʔ h k t f s ŋ r v}*={_ _ ʔ k h h n l w}"
+  /// The sound changes and the spelling, which the cognate tests also apply to known words.
+  static let rules = """
+    ; The sound changes, all at once, so that the old t becomes k without the
+    ; old k, which becomes ʔ, also turning into something else.
+    @soundChanges = (> *{ʔ h k t f s ŋ r v}*={_ _ ʔ k h h n l w})
 
-  /// How both languages write long vowels, ŋ and ʔ.
-  static let spelling = "*{a e i o u}{}*={ā ē ī ō ū} *ŋ*=ng *ʔ*=ʻ"
+    ; How both languages write long vowels, ŋ and ʔ.
+    @spelling = (> *{a e i o u}{}*={ā ē ī ō ū} *ŋ*=ng *ʔ*=ʻ)
+    """
 
   static let source = """
     ; Polynesian. Words are generated in the ancestral language and, usually,
@@ -35,14 +39,9 @@ struct PolynesianTests {
 
     _ = (? $descendant &descendant $ancestor &ancestor)
 
-    ; The sound changes, all at once, so that the old t becomes k without the
-    ; old k, which becomes ʔ, also turning into something else. A lost
-    ; consonant mustn't leave three like vowels together.
-    descendant = (+ &word
-      > \(soundChanges)
-      - *{a e i o u}{}{}*
-      > \(spelling))
-    ancestor = (+ &word > \(spelling))
+    ; A lost consonant mustn't leave three like vowels together.
+    descendant = (+ &word @soundChanges - *{a e i o u}{}{}* @spelling)
+    ancestor = (+ &word @spelling)
 
     ; A word is a root, perhaps with an affix.
     word = (+ (? 8 &root 2 (+ &prefix &root) 3 (+ &root &suffix) 1 (+ &prefix &root &suffix))
@@ -54,6 +53,8 @@ struct PolynesianTests {
 
     C = (? 2 p 4 t 4 k 2 ʔ 3 m 3 n 2 ŋ 3 f 2 s 2 h 3 l 2 r 2 v)
     V = (? 8 a 4 e 6 i 6 o 5 u 1 aa 1 ee 1 ii 1 oo 1 uu)
+
+    \(rules)
     """
 
   static let vowels = Set("aeiouāēīōū")
@@ -117,7 +118,7 @@ struct PolynesianTests {
     ("hiva", "iwa"),  // nine
   ])
   func soundChanges(ancestor: String, descendant: String) throws {
-    let generator = try Generator("_ = (+ \(ancestor) > \(Self.soundChanges) > \(Self.spelling))")
+    let generator = try Generator("\(Self.rules)\n_ = (+ \(ancestor) @soundChanges @spelling)")
     #expect(try generator.generate() == descendant)
   }
 }
