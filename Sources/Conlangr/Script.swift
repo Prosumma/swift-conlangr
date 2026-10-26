@@ -164,7 +164,8 @@ struct Compiler {
       throw ScriptError(diagnostics: diagnostics.sorted(by: Compiler.sourceOrder))
     }
     return Generator(
-      rules: rules, main: main, indices: indices, warnings: warnings(for: definitions))
+      rules: rules, main: main, indices: indices, source: source,
+      warnings: warnings(for: definitions))
   }
 
   // MARK: Lowering
@@ -221,7 +222,7 @@ struct Compiler {
       guard let rewrites, let item = Repetition(maximum: 1, node: .choice(choice)) else {
         return .literal("")
       }
-      return .sequence([item], rewrites)
+      return .sequence([item], rewrites, range: expression.range)
     case .sequence(let items, let steps):
       sequences.append(SequenceScope())
       var repetitions = items.enumerated().compactMap { index, item -> Repetition? in
@@ -253,7 +254,7 @@ struct Compiler {
       for item in scope.copied {
         repetitions[item].isCopied = true
       }
-      return .sequence(repetitions, rewrites)
+      return .sequence(repetitions, rewrites, range: expression.range)
     }
   }
 
@@ -383,7 +384,9 @@ struct Compiler {
       }
       return rewrites
     case .reject(let syntax):
-      return pattern(syntax, at: step.range).compiled.map { [.reject($0)] }
+      return pattern(syntax, at: step.range).compiled.map {
+        [Rewrite(action: .reject($0), range: step.range)]
+      }
     case .substitute(let syntax, let parts):
       // Check the replacement even if the pattern has problems, to find all of them at once.
       let (pattern, classes) = pattern(syntax, at: step.range)
@@ -391,7 +394,7 @@ struct Compiler {
       guard let pattern, let replacement else {
         return nil
       }
-      return [.substitute(pattern, replacement)]
+      return [Rewrite(action: .substitute(pattern, replacement), range: step.range)]
     }
   }
 
@@ -528,7 +531,7 @@ struct Compiler {
       case .literal, .copy: true
       case .rule(let index): finishes[index]
       case .choice(let choice): choice.alternatives.contains { canFinish($0.node) }
-      case .sequence(let repetitions, _): repetitions.allSatisfy { canFinish($0.node) }
+      case .sequence(let repetitions, _, _): repetitions.allSatisfy { canFinish($0.node) }
       }
     }
     var changed = true
@@ -545,7 +548,7 @@ struct Compiler {
       case .literal, .copy: []
       case .rule(let index): finishes[index] ? [] : [index]
       case .choice(let choice): choice.alternatives.flatMap { references($0.node) }
-      case .sequence(let repetitions, _): repetitions.flatMap { references($0.node) }
+      case .sequence(let repetitions, _, _): repetitions.flatMap { references($0.node) }
       }
     }
     func isInCycle(_ start: Int) -> Bool {

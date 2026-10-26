@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-Conlangr is a Swift package that parses, compiles, and runs a small DSL for generating random conlang words. `README.md` is the user-facing language reference. Read it first for syntax and semantics, because this file only covers what matters when changing the code.
+Conlangr is a Swift package that parses, compiles, and runs a small DSL for generating random conlang words. It has a library, `Conlangr`, and a command-line tool, `conlangr`. Scripts use the extension `.conlangr`. `README.md` is the user-facing language reference. Read it first for syntax and semantics, because this file only covers what matters when changing the code.
 
 ## Status
 
-Conlangr 1.0.0 is released, so the public API follows semantic versioning: a breaking change to it, or to the language, needs a new major version. Release tags have no `v` prefix from 1.0.0 on, matching Parsimonious; the 0.9.x tags had one.
+Conlangr 1.0.0 is released, so the public API follows semantic versioning: a breaking change to it, or to the language, needs a new major version. Release tags have no `v` prefix from 1.0.0 on, matching Parsimonious; the 0.9.x tags had one. With each release, update `ConlangrCommand.version`, which `conlangr --version` prints, to match the tag.
 
 Conlangr depends on **Parsimonious 3.1.0 or later**:
 
@@ -20,7 +20,10 @@ swift build
 swift test
 swift test -c release           # worth running too: stack and timing behaviour differ
 swift format -i -r Sources Tests   # default configuration, as in Parsimonious
+swift run conlangr check some.conlangr   # the command-line tool
 ```
+
+`swift test` runs two test bundles, `ConlangrTests` and `ConlangrCLITests`, and prints a summary for each.
 
 ## Layout
 
@@ -33,6 +36,10 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 | `Sources/Conlangr/Generator.swift` | Public `Generator`, the compiled `Node` form, and the evaluator |
 | `Sources/Conlangr/Errors.swift` | Public `ScriptError`, `Diagnostic`, `Diagnostic.Problem`, `SourceLocation`, `GenerationError` |
 | `Sources/Conlangr/Warnings.swift` | Public `Warning` and `Warning.Problem`, and the pass that finds them |
+| `Sources/Conlangr/Trace.swift` | Public `Trace`, and the `Observer`s the evaluator reports to: `Unobserved` and `Tracer` |
+| `Sources/ConlangrCLI/ConlangrCommand.swift` | The `conlangr` tool's commands, with Swift Argument Parser |
+| `Sources/ConlangrCLI/Options.swift` | The options the commands share, reading a script, and the seeded `Randomness` |
+| `Sources/ConlangrCLI/Report.swift` | How the tool prints diagnostics, warnings and traces |
 | `Sources/Conlangr/Tokens.swift` | Public `Token` and `tokenize(_:)`, a separate lexer for syntax highlighting |
 
 ## Pipeline
@@ -42,7 +49,8 @@ swift format -i -r Sources Tests   # default configuration, as in Parsimonious
 - **Parsing** (`Grammar`) produces a syntax tree that records what was written: numbers stay as digit strings, names aren't resolved, and anything a diagnostic could point at is `Located`. A syntax error becomes a `ScriptError` with a single `.syntax` diagnostic. Before parsing, `Script.checkNesting` rejects groups nested too deeply, also with a single diagnostic (see "Stack safety").
 - **Compiling** (`Compiler`) resolves variables and names, lowers the tree to `Node`s, and collects *every* problem as a `Diagnostic` before throwing. Lowering always returns a node, using a placeholder after an error, so it can keep going and find more. The termination check runs only when nothing else is wrong. Rule sets are compiled once each, before any production, including those nothing uses, so their problems are reported once. Their rewrites are spliced into each sequence that uses them, so `Node` has no notion of a rule set. Splicing copies, so `Generator.maximumRewrites` caps a sequence's or rule set's rewrites: rule sets that each use the one before twice would otherwise double with every level. A select with rewrites is lowered to a sequence whose only item is the choice, so only sequences have rewrites, and a skip makes the select choose again. That sequence is on the evaluator's stack, so lowering pushes a `SequenceScope` for it too, and copies inside count it.
 - **Warnings** come from a separate pass over the syntax tree, after compiling succeeds, and end up in `Generator.warnings`. They're never computed for a script that fails to compile, so they can't repeat or contradict a diagnostic. Since any production can be a starting point, "unused" means nothing else refers to it, not that `_` can't reach it.
-- **Generating** (`Evaluation`) walks the `Node`s.
+- **Generating** (`Evaluation`) walks the `Node`s. It's generic over an `Observer`, which `Generator.trace(using:)` uses to record what each sequence does. `generate` uses `Unobserved`, whose methods are empty, so once it's specialized, plain generation costs nothing extra: adding tracing left 200,000 release-build words byte-identical and no slower. Keep it that way, and check timing in release after changing the evaluator. Sequences and rewrites carry their source ranges only for tracing.
+- **The command-line tool** (`ConlangrCLI`) uses only the library's public API, like any other client. Its product is named `conlangr` and its target `ConlangrCLI`, so the target's module doesn't clash with `Conlangr` on a case-insensitive file system. The `@main` type is `ConlangrCommand`, not `Conlangr`, so that it doesn't shadow the library's module name. Keep formatting in `Report`, out of the library, which leaves presentation to each client, including a SwiftUI editor that's planned.
 
 The public API never exposes Parsimonious types. Keep it that way, so that Parsimonious can change without breaking Conlangr's users.
 
@@ -83,7 +91,7 @@ No input may crash the process, including on a secondary thread's 512 KB stack.
 
 ## Tests
 
-- Swift Testing (`import Testing`, `@Test`, `#expect`). The tests use only the public API: no `@testable`.
+- Swift Testing (`import Testing`, `@Test`, `#expect`). The library's tests use only the public API: no `@testable`. The CLI's tests do use `@testable import ConlangrCLI`, to test its parsing and formatting without running a process.
 - Statistical tests sample 10,000 words with a fixed seed and check each frequency to within 5% with `near(_:_:)`. The fixed seed makes them deterministic, and the tolerance means changes to how random numbers are consumed don't break them.
 - Error tests compare `Diagnostic.description` strings, so they cover the message, the line, and the column together. When you change a message, update `README.md` too if it quotes the message.
 - To check a question about semantics, add a throwaway `@Test` that tallies samples, run it, and delete it.

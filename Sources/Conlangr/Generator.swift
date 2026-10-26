@@ -7,9 +7,13 @@ public struct Generator: Sendable {
   /// The productions, which refer to each other by index.
   let rules: [Node]
   /// The index of the production to start from: `_`, unless `starting(at:)` chose another.
-  let main: Int
+  var main: Int
   /// The index of each production, by name. The main production's name is empty.
   let indices: [String: Int]
+  /// Each production's name as it's displayed, by index.
+  let names: [String]
+  /// The script, so that a trace can say where things are in it.
+  let source: String
   /// Things in the script that are probably mistakes, but didn't stop it compiling, in source
   /// order.
   public let warnings: [Warning]
@@ -32,16 +36,18 @@ public struct Generator: Sendable {
     self = try Script(source).compile(overrides: overrides)
   }
 
-  init(rules: [Node], main: Int, indices: [String: Int], warnings: [Warning]) {
+  init(rules: [Node], main: Int, indices: [String: Int], source: String, warnings: [Warning]) {
     self.rules = rules
     self.main = main
     self.indices = indices
+    names = indices.sorted { $0.value < $1.value }.map { display($0.key) }
+    self.source = source
     self.warnings = warnings
   }
 
   /// The names of the productions, in the order they're defined, with `_` for the main one.
   public var productions: [String] {
-    indices.sorted { $0.value < $1.value }.map { display($0.key) }
+    names
   }
 
   /// A generator that starts from the production named `name` instead of `_`, or `nil` if
@@ -52,7 +58,9 @@ public struct Generator: Sendable {
     guard !name.isEmpty, let index = indices[name == "_" ? "" : name] else {
       return nil
     }
-    return Generator(rules: rules, main: index, indices: indices, warnings: warnings)
+    var generator = self
+    generator.main = index
+    return generator
   }
 
   /// Generates a random word.
@@ -66,9 +74,33 @@ public struct Generator: Sendable {
   public func generate<R: RandomNumberGenerator>(using generator: inout R) throws(GenerationError)
     -> String
   {
-    var evaluation = Evaluation(rules: rules, random: generator)
+    var evaluation = Evaluation(rules: rules, random: generator, observer: Unobserved())
     defer { generator = evaluation.random }
-    return try evaluation.produce(rules[main])
+    return try evaluation.produce(main)
+  }
+
+  /// Generates a random word, and records how. See `trace(using:)`.
+  public func trace() -> Trace {
+    var generator = SystemRandomNumberGenerator()
+    return trace(using: &generator)
+  }
+
+  /// Generates a random word using `generator` as the source of randomness, and records how.
+  /// With the same seed, the word is the one that `generate(using:)` would produce.
+  ///
+  /// Generating can fail, which is often when a trace is most useful, so the trace has the
+  /// error instead of throwing it, and what happened before.
+  public func trace<R: RandomNumberGenerator>(using generator: inout R) -> Trace {
+    let tracer = Tracer(source: source, names: names)
+    var evaluation = Evaluation(rules: rules, random: generator, observer: tracer)
+    defer { generator = evaluation.random }
+    let result: Result<String, GenerationError>
+    do {
+      result = .success(try evaluation.produce(main))
+    } catch {
+      result = .failure(error)
+    }
+    return Trace(result: result, events: evaluation.observer.events)
   }
 
   /// Generates `count` random words. See `generate(count:distinct:using:)`.
@@ -114,7 +146,9 @@ indirect enum Node: Sendable {
   /// index. The compiler only makes one for an item that's finished by the time it's reached.
   case copy(sequences: Int, item: Int)
   case choice(Choice)
-  case sequence([Repetition], [Rewrite])
+  /// A concat, or a select with rewrites, which becomes a concat with the select as its only
+  /// item. `range` is the group in the source, for tracing.
+  case sequence([Repetition], [Rewrite], range: Range<String.Index>)
 }
 
 /// A weighted choice with at least one alternative that can be chosen.
@@ -178,19 +212,27 @@ struct Repetition: Sendable {
 /// reference or a select just moves on to the node it leads to, so only sequences need to
 /// remember where they are, on `stack`. Each one pushed costs a step, so the step limit bounds
 /// the stack too.
-struct Evaluation<R: RandomNumberGenerator> {
+///
+/// `observer` sees what happens to each sequence, for tracing. When generating without a trace,
+/// it's `Unobserved`, whose methods do nothing.
+struct Evaluation<R: RandomNumberGenerator, O: Observer> {
   let rules: [Node]
   var random: R
+  var observer: O
   var steps = 0
 
-  init(rules: [Node], random: R) {
+  init(rules: [Node], random: R, observer: O) {
     self.rules = rules
     self.random = random
+    self.observer = observer
   }
 
-  mutating func produce(_ root: Node) throws(GenerationError) -> String {
+  /// Produces the production with index `start`.
+  mutating func produce(_ start: Int) throws(GenerationError) -> String {
     var stack: [SequenceState] = []
-    var node = root
+    var node = rules[start]
+    // The production that the node was reached through, until something produces text.
+    var production: Int? = start
     while true {
       // Go down until something produces text.
       var text: String
@@ -203,18 +245,22 @@ struct Evaluation<R: RandomNumberGenerator> {
       case .rule(let index):
         try step()
         node = rules[index]
+        production = index
         continue
       case .choice(let choice):
         try step()
         node = choice.choose(using: &random)
         continue
-      case .sequence(let repetitions, let rewrites):
+      case .sequence(let repetitions, let rewrites, let range):
         try step()
+        observer.started(range, production: production, depth: stack.count)
+        production = nil
         var state = SequenceState(repetitions: repetitions, rewrites: rewrites)
         node = state.start(using: &random)
         stack.append(state)
         continue
       }
+      production = nil
       // Give the text to the innermost sequence. If it needs more, go down again. If it's
       // finished, its word is the text for the sequence around it.
       while var state = stack.popLast() {
@@ -223,7 +269,8 @@ struct Evaluation<R: RandomNumberGenerator> {
           stack.append(state)
           break
         }
-        if let word = try state.rewrite() {
+        if let word = try state.rewrite(observer: &observer, depth: stack.count) {
+          observer.finished(word, depth: stack.count)
           text = word
         } else {
           try step()
@@ -303,16 +350,18 @@ struct SequenceState {
 
   /// Applies the skips and substitutions to the finished word. Returns the result, or `nil`
   /// if a skip rejected it.
-  func rewrite() throws(GenerationError) -> String? {
+  func rewrite(observer: inout some Observer, depth: Int) throws(GenerationError) -> String? {
     var word = Word(word)
     for rewrite in rewrites {
-      switch rewrite {
+      switch rewrite.action {
       case .reject(let pattern):
         if pattern.matches(&word) {
+          observer.rejected(word.text, by: rewrite.range, depth: depth)
           return nil
         }
       case .substitute(let pattern, let replacement):
         if let substituted = pattern.substitute(replacement, in: &word) {
+          observer.substituted(word.text, with: substituted, by: rewrite.range, depth: depth)
           try checkLength(of: substituted)
           word = Word(substituted)
         }

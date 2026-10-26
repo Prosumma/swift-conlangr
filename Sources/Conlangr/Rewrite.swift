@@ -1,7 +1,14 @@
-/// A compiled skip or substitution.
-enum Rewrite: Sendable {
-  case reject(Pattern)
-  case substitute(Pattern, Replacement)
+/// A compiled skip or substitution, and where it's written.
+struct Rewrite: Sendable {
+  enum Action: Sendable {
+    case reject(Pattern)
+    case substitute(Pattern, Replacement)
+  }
+
+  let action: Action
+  /// The skip's pattern or the substitution in the source, for tracing. A rule set's rewrites
+  /// are where the rule set is defined.
+  let range: Range<String.Index>
 }
 
 /// A compiled pattern.

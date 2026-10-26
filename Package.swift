@@ -11,11 +11,19 @@ let package = Package(
       name: "Conlangr",
       targets: ["Conlangr"]
     ),
+    .executable(
+      name: "conlangr",
+      targets: ["ConlangrCLI"]
+    ),
   ],
   dependencies: [
     .package(
       url: "https://github.com/Prosumma/Parsimonious",
       from: "3.1.0"
+    ),
+    .package(
+      url: "https://github.com/apple/swift-argument-parser",
+      from: "1.7.0"
     ),
   ],
   targets: [
@@ -25,9 +33,20 @@ let package = Package(
         .product(name: "Parsimonious", package: "Parsimonious")
       ]
     ),
+    .executableTarget(
+      name: "ConlangrCLI",
+      dependencies: [
+        "Conlangr",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
+    ),
     .testTarget(
         name: "ConlangrTests",
         dependencies: ["Conlangr"]
+    ),
+    .testTarget(
+      name: "ConlangrCLITests",
+      dependencies: ["ConlangrCLI"]
     ),
   ]
 )

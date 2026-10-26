@@ -29,7 +29,11 @@ Add the package to your `Package.swift`:
 
 Then add `.product(name: "Conlangr", package: "swift-conlangr")` to your target's dependencies. Conlangr requires Swift 6.4 and macOS 13, iOS 16, tvOS 16, or watchOS 9. Its only dependency is [Parsimonious](https://github.com/Prosumma/Parsimonious).
 
+The package also has a command-line tool, `conlangr`. See [Command line](#command-line) for how to install it.
+
 ## Usage
+
+Scripts are usually kept in files with the extension `.conlangr`.
 
 ```swift
 import Conlangr
@@ -65,6 +69,8 @@ print(try syllables.generate())          // A single syllable
 
 Starting below `_` skips whatever `_` does around it, including its rewrites.
 
+To find out why a script produces what it does, **`trace(using:)`** generates a word and records how. Its `Trace` has the word, or the `GenerationError` if generating failed, and a list of events: each concat, and each select with rewrites, starting, the words its skips rejected, what its substitutions did, and the word it finished with. Each event has its depth and a `SourceLocation`. With the same seed, a trace produces the same word as `generate(using:)`, and generating without a trace costs nothing extra.
+
 There's also **`tokenize(_:)`**, which splits source text into `Token`s for syntax highlighting. Each token has a `kind`, a `value`, and a `range` in the source. It never fails: anything it doesn't recognize becomes an `.error` token.
 
 ### Errors
@@ -90,6 +96,47 @@ A script that compiles can still have mistakes in it. `Generator.warnings` lists
 ```
 
 The `Warning.Problem` cases are listed in [Checks](#checks).
+
+## Command line
+
+The `conlangr` tool runs scripts from the terminal. Install it with [Mint](https://github.com/yonaskolb/Mint) or [mise](https://mise.jdx.dev):
+
+```sh
+mint install Prosumma/swift-conlangr
+mise use -g spm:Prosumma/swift-conlangr
+```
+
+Or, in a checkout of this repository, run it with `swift run conlangr …`.
+
+Each subcommand takes the path of a script, or `-` to read one from standard input. With the example at the top of this page saved as `elvish.conlangr`:
+
+```sh
+conlangr elvish.conlangr                      # 10 words; generate is the default
+conlangr generate -n 50 --distinct elvish.conlangr
+conlangr generate --seed 42 elvish.conlangr   # the same words every time
+conlangr generate --from syl elvish.conlangr  # start from a production other than _
+conlangr check elvish.conlangr                # errors and warnings
+conlangr trace --seed 42 elvish.conlangr      # one word, and how it was made
+```
+
+- **`generate`** prints words, one to a line. `-n` (or `--count`) says how many, 10 by default, and `--distinct` never repeats one. `--seed` makes the output reproducible, for the same script and version of Conlangr. `--set name=value` overrides a variable the script declares, as in `--set syllables=4`, and can be repeated. `--from` starts from a production other than `_`.
+- **`check`** prints the script's errors and warnings. With `--strict`, warnings count as errors.
+- **`trace`** generates one word and shows each group as it starts, with what happened in it indented below it. `-` marks a word that a skip rejected, `>` a substitution, and `=` the word the group produced. It takes `--seed`, `--set` and `--from` too.
+
+```
+$ conlangr trace --seed 42 elvish.conlangr
+_  (5:7)
+  syl  (4:12)
+    = ke
+  syl  (4:12)
+    = ni
+  syl  (4:12)
+    = ni
+  > akenini → acenini  by *k*=c (6:23)
+  = acenini
+```
+
+Errors and warnings go to standard error, from every command including `check`, so standard output only ever has words or a trace. They're printed as `path:line:column: error: message`, a form that editors and terminals can link to the source. The tool exits with status 1 when the script has errors (or warnings, with `check --strict`), when generating fails, or when the script can't be read, and with status 64 when the arguments are wrong.
 
 ## Quick reference
 
