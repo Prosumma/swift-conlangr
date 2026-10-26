@@ -49,6 +49,7 @@ The public API never exposes Parsimonious types. Keep it that way, so that Parsi
 The user prefers type-driven design (see `../../CLAUDE.md`). These invariants are established by construction, so the evaluator doesn't check them:
 
 - **Everything is resolved.** Productions refer to each other by index into `Generator.rules`, so a dangling reference can't exist in a `Generator`. `Generator.init(rules:main:)` is internal, and only `Compiler` calls it, after its checks pass.
+- **A copy always has something to copy.** The compiler resolves `^name` lexically, to an earlier `&name` item of a sequence around it in the same definition, and makes a `Node.copy(sequences:item:)`. When it's reached, that item is finished, and the evaluator's stack holds exactly the sequences in between above the one it names, since only sequences push. The compiler marks copied items with `Repetition.isCopied`, and `SequenceState` keeps what only those produced, so grammars without copies pay almost nothing.
 - **Every production can finish.** `Compiler.checkTermination` computes which productions can finish (a least fixpoint, starting from literals) and rejects the rest. It reports only the productions in a cycle, not the ones that depend on a cycle, because fixing the cycle fixes those too.
 - **`Choice` always has something to choose.** Its failable initializer drops zero-weight alternatives and returns `nil` if none are left. Duplicate alternatives are kept, so they count twice. That's what makes `*ptkk` weight `k` double.
 - **Rewrites are resolved.** The compiler pairs each class in a replacement with a class in the pattern, and checks that their alternatives line up, so `Replacement.Element.choice` always has one alternative for each of its pattern class's. A `{}` in a pattern becomes a `.repeated` element that refers to an earlier class. A pattern that can match anywhere can't match nothing, so scanning a word always makes progress.
@@ -56,7 +57,7 @@ The user prefers type-driven design (see `../../CLAUDE.md`). These invariants ar
 
 ## Grammar conventions
 
-- **Commit once a construct has started.** For example, `(`, `&`, `*`, `$`, `@`, `%`, `-`, and `>` each commit what follows them, and definitions use `commit1()`. Without that, Parsimonious backtracks and reports "No alternative matched." at the start of the line. If a new error test shows that message, there's a missing commit or `expecting`.
+- **Commit once a construct has started.** For example, `(`, `&`, `^`, `*`, `$`, `@`, `%`, `-`, and `>` each commit what follows them, and definitions use `commit1()`. Without that, Parsimonious backtracks and reports "No alternative matched." at the start of the line. If a new error test shows that message, there's a missing commit or `expecting`.
 - **Name recognizable mistakes** with `peek()` followed by `fail(...).commit()`. `strayQuantifier` and `misplacedRewrite` work this way.
 - **Messages** are full sentences ending in a period, with straight double quotes around source text, like Parsimonious's own messages (`Expected ")".`).
 - The grammar is recursive through `Grammar.expression`, a closure-based `Parser`. All parsers must stay `static let`s, which Swift initializes lazily (see Parsimonious's README, "Recursion").

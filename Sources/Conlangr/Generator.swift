@@ -49,6 +49,10 @@ public struct Generator: Sendable {
 indirect enum Node: Sendable {
   case literal(String)
   case rule(Int)
+  /// What an item of a sequence around this node produced. `sequences` counts the sequences in
+  /// between, which are the ones above it on the evaluator's stack, and `item` is the item's
+  /// index. The compiler only makes one for an item that's finished by the time it's reached.
+  case copy(sequences: Int, item: Int)
   case choice(Choice)
   case sequence([Repetition], [Rewrite])
 }
@@ -91,6 +95,8 @@ struct Repetition: Sendable {
   /// At least 1.
   let maximum: Int
   let node: Node
+  /// Whether a copy refers to this item, so that what it produces must be kept.
+  var isCopied = false
 
   /// Fails if `maximum` is less than 1.
   init?(maximum: Int, node: Node) {
@@ -131,6 +137,9 @@ struct Evaluation<R: RandomNumberGenerator> {
       switch node {
       case .literal(let literal):
         text = literal
+      case .copy(let sequences, let item):
+        // The item is finished and marked as copied, so what it produced has been kept.
+        text = stack[stack.count - 1 - sequences].produced[item]!
       case .rule(let index):
         try step()
         node = rules[index]
@@ -186,6 +195,10 @@ struct SequenceState {
   /// How many more times to produce it, including the one in progress.
   var remaining = 0
   var word = ""
+  /// What each finished item that a copy refers to produced.
+  var produced: [Int: String] = [:]
+  /// What the current item has produced so far, if a copy refers to it.
+  var current = ""
 
   init(repetitions: [Repetition], rewrites: [Rewrite]) {
     self.repetitions = repetitions
@@ -198,6 +211,8 @@ struct SequenceState {
     item = 0
     remaining = repetitions[0].count(using: &random)
     word = ""
+    produced = [:]
+    current = ""
     return repetitions[0].node
   }
 
@@ -207,9 +222,16 @@ struct SequenceState {
     throws(GenerationError) -> Node?
   {
     word += text
+    if repetitions[item].isCopied {
+      current += text
+    }
     try checkLength(of: word)
     remaining -= 1
     if remaining == 0 {
+      if repetitions[item].isCopied {
+        produced[item] = current
+        current = ""
+      }
       item += 1
       guard item < repetitions.count else {
         return nil

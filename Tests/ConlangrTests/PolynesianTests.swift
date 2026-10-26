@@ -10,14 +10,16 @@ import Testing
 ///   word ends in a vowel. Two like vowels together are one long vowel, written with a macron.
 /// - Words are roots of two or three syllables, sometimes with the causative prefix faka-, the
 ///   nominalizing suffix -ŋa, or the passive -ʔia.
+/// - Roots are often reduplicated, either entirely (Hawaiian wikiwiki, "quick") or just their
+///   first syllable (pule, "pray", and pupule, "crazy").
 /// - The descendant loses ʔ and h, turns k into ʔ (written ʻ) and then t into k, and merges f and s
 ///   into h, ŋ into n, r into l, and v into w. So the ancestor's taŋata becomes kanaka, and its 13
 ///   consonants become Hawaiian's eight.
 ///
 /// The ancestral forms are the grammar's idealized form, and the sound changes are a rule set
 /// with a single substitution, whose class maps every sound at once. Applied one at a time, k → ʔ and t → k
-/// would have to be carefully ordered, or every t would end up as ʔ. Conlangr can't copy what it
-/// generates, so there's no reduplication, which Polynesian languages use a great deal.
+/// would have to be carefully ordered, or every t would end up as ʔ. Reduplication happens in the
+/// ancestor, so the sound changes apply to both copies alike.
 struct PolynesianTests {
   /// The sound changes and the spelling, which the cognate tests also apply to known words.
   static let rules = """
@@ -46,7 +48,11 @@ struct PolynesianTests {
     ; A word is a root, perhaps with an affix.
     word = (+ (? 8 &root 2 (+ &prefix &root) 3 (+ &root &suffix) 1 (+ &prefix &root &suffix))
       - *{a e i o u}{}{}*)
-    root = (+ &syllable &syllable (? 3 _ 1 &syllable))
+    ; A root of two or three syllables, sometimes reduplicated: entirely, or
+    ; just its first syllable.
+    root = (? 8 &plainRoot 1 (+ &pair ^pair) 1 (+ &syllable ^syllable &syllable))
+    plainRoot = (+ &syllable &syllable (? 3 _ 1 &syllable))
+    pair = (+ &syllable &syllable)
     syllable = (+ (? 8 &C 1 _) &V)
     prefix = (? 3 faka 1 fe 1 ma)
     suffix = (? 3 ŋa 2 ʔia 1 ina)
@@ -92,6 +98,14 @@ struct PolynesianTests {
     for consonant in ["t", "ng", "f", "s", "r", "v", "ʻ"] {
       #expect(words.contains { $0.contains(consonant) }, "\(consonant)")
     }
+  }
+
+  @Test func reduplication() throws {
+    // A fully reduplicated root with no affix is the same thing twice.
+    let doubled = try Self.sample().filter { word in
+      word.count.isMultiple(of: 2) && word.prefix(word.count / 2) == word.suffix(word.count / 2)
+    }
+    #expect(doubled.count > 50)
   }
 
   @Test func longVowelsAreWrittenWithAMacron() throws {

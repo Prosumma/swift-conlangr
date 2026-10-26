@@ -18,7 +18,7 @@ extension Token {
     case parens
     /// `{` or `}`, around a class in a pattern or replacement.
     case braces
-    /// `=`, `+`, `?`, `-`, `&`, `>`, `*`, `$` or `@`.
+    /// `=`, `+`, `?`, `-`, `&`, `^`, `>`, `*`, `$` or `@`.
     case op
     /// A run of digits.
     case number
@@ -51,7 +51,7 @@ enum Lexicon {
   }
   static let parens = token(char(anyOf: "()"), .parens)
   static let braces = token(char(anyOf: "{}"), .braces)
-  static let op = token(char(anyOf: "=+?-&>*$@"), .op)
+  static let op = token(char(anyOf: "=+?-&^>*$@"), .op)
   static let number = token(char(anyOf: "0123456789")+, .number)
   static let error = token(Grammar.visible, .error)
 

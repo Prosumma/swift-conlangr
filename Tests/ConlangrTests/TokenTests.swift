@@ -16,6 +16,14 @@ struct TokenTests {
       ])
   }
 
+  @Test func copies() {
+    #expect(
+      kinds("_ = (+ &a ^a)") == [
+        "literal:", "op:=", "parens:(", "op:+", "op:&", "literal:a", "op:^", "literal:a",
+        "parens:)",
+      ])
+  }
+
   @Test func ruleSets() {
     #expect(
       kinds("@x = (> a=b)\n_ = (+ a @x)") == [
@@ -51,7 +59,7 @@ struct TokenTests {
   @Test func neverFails() {
     #expect(tokenize("").isEmpty)
     #expect(tokenize("  \n\t ").isEmpty)
-    #expect(kinds("!^'\":#<[]") == "!^'\":#<[]".map { "error:\($0)" })
+    #expect(kinds("!'\":#<[]") == "!'\":#<[]".map { "error:\($0)" })
   }
 
   @Test func acceptsScriptsThatDoNotParse() {

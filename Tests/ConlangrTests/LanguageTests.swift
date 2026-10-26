@@ -273,6 +273,58 @@ struct ClassTests {
   }
 }
 
+struct CopyTests {
+  @Test func copiesWhatAnEarlierItemProduced() throws {
+    let tally = try tally("_ = (+ &syllable ^syllable)\nsyllable = (? ka pu li)")
+    #expect(Set(tally.keys) == ["kaka", "pupu", "lili"])
+  }
+
+  @Test func copiesEveryRepeat() throws {
+    // The copy is of the whole item, so a word of two or three syllables is copied entire.
+    let words = try words("_ = (+ 3 &syllable %- ^syllable)\nsyllable = *ab")
+    #expect(words.allSatisfy { word in word.split(separator: "-").count == 2 })
+    #expect(
+      words.allSatisfy { word in
+        let halves = word.split(separator: "-")
+        return halves[0] == halves[1]
+      })
+    #expect(words.contains { $0.count == 7 })
+  }
+
+  @Test func copiesTheLatestOfSeveral() throws {
+    #expect(try word("_ = (+ &a &b &a ^a ^b)\na = *x\nb = *y") == "xyxxy")
+    let words = try words("_ = (+ &a &a ^a)\na = *xy")
+    #expect(words.allSatisfy { $0.dropFirst().first == $0.last })
+  }
+
+  @Test func copiesFromAConcatAroundIt() throws {
+    // Optional reduplication: the copy is inside a select, inside a later item.
+    let tally = try tally("_ = (+ &root (? 1 _ 1 (+ %- ^root)))\nroot = (? ka pu)")
+    #expect(Set(tally.keys) == ["ka", "pu", "ka-ka", "pu-pu"])
+    // Two concats out.
+    #expect(try word("_ = (+ &a (+ b (+ c ^a)))\na = x") == "xbcx")
+  }
+
+  @Test func copiesTheItemAfterItsRewrites() throws {
+    // The copy is of what the item produced, and the concat's own rewrites then apply to both.
+    let source = """
+      _ = (+ &root ^root > *a*=e)
+      root = (+ ka > *k*=t)
+      """
+    #expect(try word(source) == "tete")
+  }
+
+  @Test func isRedoneWhenTheConcatIsRejected() throws {
+    let words = try words("_ = (+ &a ^a - xx)\na = (? x y z)")
+    #expect(words == ["yy", "zz"])
+  }
+
+  @Test func canBeRepeatedAndWeighted() throws {
+    #expect(try word("_ = (+ &a 3 ^a)\na = x").allSatisfy { $0 == "x" })
+    #expect(try words("_ = (+ &a (? 0 ^a 1 y))\na = x") == ["xy"])
+  }
+}
+
 struct RuleSetTests {
   @Test func appliesItsRulesInOrder() throws {
     let source = """

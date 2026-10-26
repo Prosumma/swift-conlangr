@@ -8,8 +8,8 @@ import Testing
 /// - Words are written as cuneiform signs joined by hyphens: lugal-e, mu-un-na-du₃. A subscript
 ///   number tells apart signs that sound alike, and ᵈ, the determinative for a god, starts a divine
 ///   name: ᵈen-lil₂.
-/// - A noun is a root, then an optional plural (-e-ne), possessive (-ĝu₁₀, -zu, -a-ni, -bi) and
-///   case (-e, -ra, -ta, -še₃, -da, and -a). After a consonant, the case -a is written by repeating
+/// - A noun is a root, then an optional plural, possessive (-ĝu₁₀, -zu, -a-ni, -bi) and case (-e,
+///   -ra, -ta, -še₃, -da, and -a). The plural is -e-ne, or the root said twice: kur-kur, "lands". After a consonant, the case -a is written by repeating
 ///   the consonant: lugal-la.
 /// - A verb is an optional modal (ḫa-, nu-), a conjugation prefix (mu-, i₃-, ba-, bi₂-), an
 ///   optional dimensional prefix (na-, ši-, ta-, da-, ni-), the root, and a person suffix.
@@ -32,9 +32,10 @@ struct SumerianTests {
       > *{b d g k l m n r s š z ĝ ḫ p t}·ª*={}·{}a   ; -a after a consonant repeats it
         *ª*=a *·*=%-)
 
-    ; Nouns: a root, then plural, possessive and case.
+    ; Nouns: a root, then plural, possessive and case. The plural can also
+    ; repeat the root.
     noun = (+ &nounRoot
-      (? 8 _ 1 ·e·ne)
+      (? 16 _ 2 ·e·ne 1 (+ · ^nounRoot))
       (? 5 _ 1 ·ĝu₁₀ 1 ·zu 1 ·a·ni 1 ·bi)
       (? 3 _ 2 ·e 1 ·ra 1 ·ta 1 ·še₃ 1 ·da 2 ·ª))
     nounRoot = (? 3 &knownNoun 2 &sign 2 (+ &sign · &sign))
@@ -116,6 +117,18 @@ struct SumerianTests {
       let isLow = !low.isDisjoint(with: segments) || conjugation == "e"
       #expect(!(isHigh && isLow), "\(word)")
     }
+  }
+
+  @Test func pluralByReduplication() throws {
+    // Some nouns start with their root twice, a sign or more each time.
+    let doubled = try Self.sample(overrides: ["verbs": 0, "gods": 0]).filter { word in
+      let signs = word.split(separator: "-")
+      return stride(from: 1, through: signs.count / 2, by: 1).contains { n in
+        signs[0..<n].elementsEqual(signs[n..<(2 * n)])
+      }
+    }
+    #expect(doubled.contains { $0.hasPrefix("kur-kur") || $0.hasPrefix("lugal-lugal") })
+    #expect(doubled.count > 30)
   }
 
   @Test func familiarShapes() throws {

@@ -88,6 +88,7 @@ The production named `_` is the main production, and it's where generation start
 | `abc` | literal | the text `abc` |
 | `_` | empty | the empty string |
 | `&name` | reference | whatever the production `name` produces |
+| `^name` | copy | exactly what an earlier `&name` in the same word produced |
 | `*abc` | spread | one of the characters `a`, `b`, or `c`, chosen at random |
 | `(? p1 p2 …)` | select | one of the alternatives, chosen at random (by weight) |
 | `(+ p1 p2 …)` | concat | each item in order, joined together |
@@ -136,6 +137,20 @@ _ = (+ &syl 4 &syl)           ; 2 to 5 syllables
 ```
 
 A repeat count must be at least 1. To make something optional, select between it and `_`: `(? &coda _)`.
+
+### Copies: `^name`
+
+A copy repeats exactly what an earlier `&name` produced, which is how to write reduplication:
+
+```
+_ = (+ &root ^root)                      ; wikiwiki
+_ = (+ &syllable ^syllable &syllable)    ; pupule
+_ = (+ &root (? 3 _ 1 (+ %- ^root)))     ; kur, and sometimes kur-kur
+```
+
+The `&name` must be an item of a concat that the copy comes later in, either directly or inside one of its later items, as in the third line. It must also be in the same definition. That way, it has always been produced by the time the copy needs it, and compiling reports a copy that has nothing to copy. If there are several, the copy is of the latest. It copies the whole item, so after `3 &syllable`, `^syllable` repeats every syllable it produced. It copies the item as it came out, after the item's own rewrites, and the concat's rewrites then apply to both.
+
+A copy can have a weight or repeat count like any other item: `(+ &root 2 ^root)` says the root two or three times.
 
 ### Rewrites: skips and substitutions
 
@@ -252,6 +267,7 @@ Compiling catches these problems before any word is generated, each reported as 
 | `undefinedProduction` | `&vowl` when there's no `vowl`, even on a branch that's rarely chosen |
 | `undefinedVariable` | `$n` when there's no `$n = …` |
 | `undefinedRuleSet` | `@r` when there's no `@r = (…)` |
+| `nothingToCopy` | `(+ ^a &a)`, or a `^a` with no earlier `&a` in a concat around it |
 | `ruleSetIncludesItself` | `@r = (> a=b @r)`, or two rule sets that use each other |
 | `tooManyRewrites` | more than 1,024 skips and substitutions in one concat or rule set, counting those of the rule sets it uses |
 | `unknownOverride` | an override for a variable the script doesn't declare |
@@ -330,11 +346,11 @@ Each of these test files holds a grammar for a language inspired by a real or in
 | `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest, as rule sets; digraphs as single letters |
 | `OldNorseTests.swift` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
 | `IndoEuropeanTests.swift` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
-| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates; rule sets shared by two languages |
+| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates; rule sets shared by two languages; full and partial reduplication |
 | `SiniticTests.swift` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
 | `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
 | `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |
-| `SumerianTests.swift` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes |
+| `SumerianTests.swift` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes; plurals by reduplication |
 
 They're all in `Tests/ConlangrTests`.
 

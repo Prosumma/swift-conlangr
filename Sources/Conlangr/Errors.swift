@@ -65,6 +65,8 @@ extension Diagnostic {
     case undefinedVariable(String)
     /// `@name` refers to a rule set that isn't defined.
     case undefinedRuleSet(String)
+    /// `^name` has no `&name` to copy, earlier in the same sequence or in a sequence around it.
+    case nothingToCopy(String)
     /// A rule set includes itself, directly or through other rule sets.
     case ruleSetIncludesItself(String)
     /// A sequence or rule set has more than `Generator.maximumRewrites` skips and substitutions,
@@ -119,6 +121,8 @@ extension Diagnostic {
         "There is no rule set named \"@\(name)\"."
       case .ruleSetIncludesItself(let name):
         "The rule set \"@\(name)\" can't include itself, directly or through another rule set."
+      case .nothingToCopy(let name):
+        "There's no \"&\(display(name))\" earlier in this concat, or in a concat around it, for \"^\(display(name))\" to copy."
       case .tooManyRewrites:
         "This makes more than \(Generator.maximumRewrites) skips and substitutions in one place, counting those of the rule sets used."
       case .undefinedProduction(let name):

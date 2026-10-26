@@ -44,6 +44,7 @@ struct SyntaxErrorTests {
       "1:10: Skips (-), substitutions (>) and rule sets (@) can only appear in (+ ...)."
     ),
     ("_ = (+ a @)", "1:11: Expected a rule set name after \"@\"."),
+    ("_ = (+ a ^)", "1:11: Expected a production name after \"^\"."),
     ("_ = (+ a - *a*@x)", "1:15: Patterns must be separated by whitespace."),
     ("_ = (+ a - @x*a*)", "1:14: Patterns must be separated by whitespace."),
     ("_ = (+ a - @x{a b})", "1:14: Patterns must be separated by whitespace."),
@@ -199,6 +200,17 @@ struct CompileErrorTests {
       messages("$w = 1\n_ = (? $w a b)", overrides: ["v": 2]) == [
         "An override was given for \"$v\", but the script doesn't declare it."
       ])
+  }
+
+  @Test func nothingToCopy() {
+    let message =
+      "There's no \"&a\" earlier in this concat, or in a concat around it, for \"^a\" to copy."
+    // Not yet produced, not an item of a concat, and not in this definition.
+    #expect(messages("_ = (+ ^a &a)\na = x") == ["1:8: \(message)"])
+    #expect(messages("_ = (+ (? &a x) ^a)\na = x") == ["1:17: \(message)"])
+    #expect(messages("_ = (? &a ^a)\na = x") == ["1:11: \(message)"])
+    #expect(messages("_ = (+ &a &b)\na = x\nb = ^a") == ["3:5: \(message)"])
+    #expect(messages("_ = (+ &a (+ x) ^a)\na = x") == [])
   }
 
   @Test func undefinedRuleSet() {

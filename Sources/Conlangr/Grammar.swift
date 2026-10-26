@@ -9,7 +9,7 @@ typealias SourceParser<Output> = Parser<String, Output>
 /// The grammar is recursive through `expression`, so these must stay `static let`s.
 enum Grammar {
   /// Characters that can't appear in text without a `%` in front of them. Some aren't used
-  /// yet and are set aside for the future: `[ ] ! ^ ' " : # <`.
+  /// yet and are set aside for the future: `[ ] ! ' " : # <`.
   static let reserved = Set("(){}[]+?&-$@!^*='\":;#0123456789<>")
 
   /// Whether `c` is entirely whitespace. Matches `Parsers.whitespace`, so a space followed by
@@ -55,6 +55,9 @@ enum Grammar {
   static let reference =
     (char("&") *> text.expecting("Expected a production name after \"&\".").commit())
     .map { Expression.reference($0.value) }
+  static let copy =
+    (char("^") *> text.expecting("Expected a production name after \"^\".").commit())
+    .map { Expression.copy($0.value) }
   static let spreadElement =
     escape.map { String($0) } <|> plain.map { $0 == "_" ? "" : String($0) }
   static let spread =
@@ -142,7 +145,7 @@ enum Grammar {
     (char("(") *> gap *> (select <|> sequence).expecting("Expected \"?\" or \"+\" after \"(\"."))
     .commit1()
 
-  static let located = (literal <|> reference <|> spread <|> group).captured().map {
+  static let located = (literal <|> reference <|> copy <|> spread <|> group).captured().map {
     Located($0, $1)
   }
   static let expression: SourceParser<Located<Expression>> = Parser {

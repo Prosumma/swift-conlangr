@@ -26,6 +26,8 @@ enum Definition: Sendable {
 indirect enum Expression: Sendable {
   case literal(String)
   case reference(String)
+  /// `^name`: a copy of what an earlier `&name` produced.
+  case copy(String)
   /// `*abc`. Each element is a single character, or the empty string for `_`.
   case spread([String])
   case select([Item])

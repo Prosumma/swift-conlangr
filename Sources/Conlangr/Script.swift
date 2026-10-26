@@ -84,6 +84,15 @@ struct Compiler {
   var indices: [String: Int] = [:]
   /// Each rule set's rewrites, or `nil` if it has problems, which have been reported.
   var ruleSets: [String: [Rewrite]?] = [:]
+  /// While lowering, the sequences around the expression, innermost last.
+  var sequences: [SequenceScope] = []
+
+  /// What copies can refer to in a sequence that's being lowered, and which items they do.
+  struct SequenceScope {
+    /// The index of the latest item so far that's a reference to each production.
+    var copyable: [String: Int] = [:]
+    var copied: Set<Int> = []
+  }
 
   init(source: String) {
     self.source = source
@@ -168,6 +177,17 @@ struct Compiler {
         return .literal("")
       }
       return .rule(index)
+    case .copy(let name):
+      // Count outwards, since the evaluator finds the sequence that far down its stack.
+      for distance in sequences.indices {
+        let index = sequences.count - 1 - distance
+        if let item = sequences[index].copyable[name] {
+          sequences[index].copied.insert(item)
+          return .copy(sequences: distance, item: item)
+        }
+      }
+      report(.nothingToCopy(name), at: expression.range)
+      return .literal("")
     case .spread(let elements):
       let alternatives = elements.map { Choice.Alternative(weight: 1, node: .literal($0)) }
       // The grammar requires at least one element, so this always succeeds.
@@ -182,9 +202,14 @@ struct Compiler {
       }
       return .choice(choice)
     case .sequence(let items, let steps):
-      let repetitions = items.compactMap { item -> Repetition? in
+      sequences.append(SequenceScope())
+      var repetitions = items.enumerated().compactMap { index, item -> Repetition? in
         let count = quantity(of: item)
         let node = lower(item.expression)
+        // Later items, and anything inside them, can copy this one.
+        if case .reference(let name) = item.expression.value {
+          sequences[sequences.count - 1].copyable[name] = index
+        }
         guard let count else {
           return nil
         }
@@ -197,11 +222,15 @@ struct Compiler {
         }
         return repetition
       }
+      let scope = sequences.removeLast()
       let rewrites = rewrites(steps)
       // An invalid item or rewrite was dropped and reported. Don't build a sequence without it,
       // since the generator assumes a sequence has every item, and at least one.
       guard repetitions.count == items.count, let rewrites else {
         return .literal("")
+      }
+      for item in scope.copied {
+        repetitions[item].isCopied = true
       }
       return .sequence(repetitions, rewrites)
     }
@@ -475,7 +504,7 @@ struct Compiler {
     var finishes = Array(repeating: false, count: rules.count)
     func canFinish(_ node: Node) -> Bool {
       switch node {
-      case .literal: true
+      case .literal, .copy: true
       case .rule(let index): finishes[index]
       case .choice(let choice): choice.alternatives.contains { canFinish($0.node) }
       case .sequence(let repetitions, _): repetitions.allSatisfy { canFinish($0.node) }
@@ -492,7 +521,7 @@ struct Compiler {
 
     func references(_ node: Node) -> [Int] {
       switch node {
-      case .literal: []
+      case .literal, .copy: []
       case .rule(let index): finishes[index] ? [] : [index]
       case .choice(let choice): choice.alternatives.flatMap { references($0.node) }
       case .sequence(let repetitions, _): repetitions.flatMap { references($0.node) }
