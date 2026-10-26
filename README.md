@@ -24,7 +24,7 @@ For the whole language on one page, see [Quick reference](#quick-reference). For
 Add the package to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/Prosumma/swift-conlangr", from: "1.0.0"),
+.package(url: "https://github.com/Prosumma/swift-conlangr", from: "1.1.0"),
 ```
 
 Then add `.product(name: "Conlangr", package: "swift-conlangr")` to your target's dependencies. Conlangr requires Swift 6.4 and macOS 13, iOS 16, tvOS 16, or watchOS 9. Its only dependency is [Parsimonious](https://github.com/Prosumma/Parsimonious).
