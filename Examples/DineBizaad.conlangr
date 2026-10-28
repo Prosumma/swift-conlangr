@@ -1,0 +1,66 @@
+; Inspired by Diné Bizaad (Navajo). Words with no sibilants, words with
+; front sibilants (s z ʦ ʦʼ ʣ), and words with back sibilants (ʃ ʒ ʧ ʧʼ j)
+; are built separately, so the two series never mix.
+;
+; Each sound is one symbol until the end, when the spelling is filled in:
+; ʔ is the glottal stop and ʼ marks an ejective (both written '), and
+; ʃ ʒ ʧ ʦ ʣ ƛ λ ɣ ʍ kʷ are sh zh ch ts dz tł dl gh hw kw.
+
+$prefixes = 3     ; the most prefixes a verb can have
+$nasality = 2     ; how often a stem vowel is nasal, out of 8
+
+_ = (+ (? 4 &plainWord 2 &frontWord 2 &backWord)
+  - n{n m ʔ h ʍ y w b g ɣ k}*               ; a syllabic n needs a consonant it can join
+  > *ɣ{i í į į́ e é ę ę́}*=y{}                 ; ɣ is written y before i and e,
+    *ɣ{o ó ǫ ǫ́}*=w{}                         ; w before o,
+    *ɣ*=gh                                   ; and gh before a
+    *{ʔ ʼ ʃ ʒ ʧ ʦ ʣ ƛ λ ʍ kʷ}*={%' %' sh zh ch ts dz tł dl hw kw})
+
+; A noun is a stem, with or without a possessor. A verb is one or more
+; prefixes and a stem. Before a front sibilant, "my" is si-, not ʃi-.
+; Before a back sibilant, the perfective prefix is ʃi-, not si-.
+plainWord = (?
+  2 (+ (? 3 _ 3 &possessor 2 ʃi) &plainStem)
+  3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 si) &plainStem))
+frontWord = (?
+  2 (+ (? 3 _ 3 &possessor 2 si) &frontStem)
+  3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 si 1 ʣi) &frontStem))
+backWord = (?
+  2 (+ (? 3 _ 3 &possessor 2 ʃi) &backStem)
+  3 (+ &syllabicN $prefixes &prefix (? 4 _ 1 ʃi 1 ji) &backStem))
+
+possessor = (? 3 bi 2 ni 2 ʔa 1 ha)   ; his or her, your, someone's, its
+syllabicN = (? 9 _ 1 n)
+
+; Prefixes are CV, with low tone and a short oral vowel, most often i.
+prefix = (? 3 na 3 ni 3 di 3 yi 2 bi 2 da 2 ha 1 ho 1 ʔa
+  4 (+ &C (? 4 i 2 a 1 e 1 o)))
+
+; Stems. After n or m, a vowel is written without its nasal hook.
+plainStem = (? 4 (+ &C &rhyme) 1 (+ &nasal &oralRhyme))
+frontStem = (? 3 (+ &front &rhyme) 1 (+ &C &vowel *sz) 1 (+ &front &vowel *sz))
+backStem = (? 3 (+ &back &rhyme) 1 (+ &C &vowel &backCoda) 1 (+ &back &vowel &backCoda))
+backCoda = (? 3 ʃ 1 ʒ)
+
+rhyme = (? 4 &vowel 3 (+ &vowel &coda) 1 (+ &oral n) 1 &diphthong)
+oralRhyme = (? 4 &oral 3 (+ &oral &coda) 1 (+ &oral n))
+coda = (? 4 ʔ 3 h 2 d 2 l 3 ł)
+
+; Consonants other than sibilants and nasals: mostly coronal, few labials.
+C = (? 6 d 5 t 6 h 4 y 5 ʔ 4 ł 3 l 4 g 2 k 2 tʼ 2 kʼ 2 ƛ 1 ƛʼ 1 λ
+  2 ɣ 1 ʍ 1 kʷ 1 w 3 b)
+nasal = (? 6 n 1 m)
+front = (? 4 s 3 ʦ 2 ʦʼ 2 ʣ 1 z)
+back = (? 4 ʃ 3 ʧ 2 ʧʼ 2 j 1 ʒ)
+
+; Vowels are short or long, with low or high tone. Only long vowels can
+; rise (aá) or fall (áa).
+vowel = (? 6 &oral $nasality &nasalVowel)
+oral = (?
+  6 a 4 e 6 i 5 o
+  3 á 2 é 3 í 2 ó
+  3 aa 2 ee 3 ii 3 oo
+  2 áá 1 éé 2 íí 2 óó
+  1 aá 1 áa 1 eé 1 ée 1 ií 1 íi 1 oó 1 óo)
+nasalVowel = (? 3 ą 2 ę 3 į 2 ǫ 2 ą́ 1 ę́ 2 į́ 1 ǫ́ 1 ąą 1 įį 1 ǫǫ 1 ą́ą́ 1 į́į́)
+diphthong = (? 2 ai 2 ei 1 oi 1 ao 1 aii 1 eii)

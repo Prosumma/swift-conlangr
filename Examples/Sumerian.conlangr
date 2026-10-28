@@ -1,0 +1,44 @@
+; Inspired by Sumerian. Signs are separated by · until the end, when it
+; becomes a hyphen. I, J, B and N stand for the prefixes that harmonize
+; with the root's vowel, and ª for the case -a, which repeats a consonant.
+
+$nouns = 5
+$gods = 1
+$verbs = 4
+
+_ = (+ (? $nouns &noun $gods &god $verbs &verb)
+  > *{b d g k l m n r s š z ĝ ḫ p t}·ª*={}·{}a   ; -a after a consonant repeats it
+    *ª*=a *·*=%-)
+
+; Nouns: a root, then plural, possessive and case. The plural can also
+; repeat the root.
+noun = (+ &nounRoot
+  (? 16 _ 2 ·e·ne 1 (+ · ^nounRoot))
+  (? 5 _ 1 ·ĝu₁₀ 1 ·zu 1 ·a·ni 1 ·bi)
+  (? 3 _ 2 ·e 1 ·ra 1 ·ta 1 ·še₃ 1 ·da 2 ·ª))
+nounRoot = (? 3 &knownNoun 2 &sign 2 (+ &sign · &sign))
+knownNoun = (? 2 lugal 1 e₂ 1 dumu 1 nin 1 dub 1 kur 1 ki 1 ĝiš 1 uru 1 ensi₂
+  1 sukkal 1 dam 1 ama 1 ša₃ 1 igi 1 šu 1 ka 1 mu 1 kug 1 gu₄ 1 udu 1 ezen
+  1 e₂·gal 1 ab·ba 1 a·ša₃)
+
+; A god's name: the determinative, a root, and perhaps another sign.
+god = (+ ᵈ &nounRoot (? 2 _ 1 (+ · &sign)))
+
+; Verbs. The harmonizing prefixes take i before a root with i or u, and
+; e before a root with a or e. J is the -n- after I: i₃-in- or e-en-.
+verb = (? (+ &chain &highRoot &ending > *I*=i₃ *J*=in *B*=bi₂ *N*=ni)
+  (+ &chain &lowRoot &ending > *I*=e *J*=en *B*=be₂ *N*=ne))
+chain = (+
+  (? 6 _ 1 ḫa· 1 nu·)
+  (? 3 (+ mu· (? 3 _ 1 un·)) 3 (+ I· (? 3 _ 1 J·)) 2 (+ ba· (? 3 _ 1 an·)) 1 B·)
+  (? 4 _ 1 na· 1 ši· 1 ta· 1 da· 1 N·))
+highRoot = (? du₃ dug₄ tuku ku₄ gi₄ gu₇ šum₂ zu tum₂ kur₉ us₂ gid₂ dib si tud
+  ug₅ ḫul gul)
+lowRoot = (? ak ĝar sa₁₀ ra de₆ e₃ ĝen keš₂ me ba tak₄ šar₂ dab₅ kar naĝ ĝal₂)
+ending = (? 3 _ 1 ·en 1 ·e 1 ·eš)
+
+; Signs: a vowel, with consonants before or after it, and sometimes an index.
+sign = (? 3 (+ &C &V &index) 2 (+ &C &V &C &index) 1 (+ &V &C &index))
+index = (? 8 _ 2 ₂ 2 ₃ 1 ₄ 1 ₅)
+C = (? 3 b 3 d 4 g 3 k 2 p 3 t 2 ĝ 4 m 4 n 4 l 3 r 3 s 3 š 2 z 2 ḫ)
+V = (? 4 a 3 e 3 i 3 u)

@@ -1,5 +1,24 @@
 import Conlangr
+import Foundation
 import Testing
+
+/// The example grammars in `Examples`, one `.conlangr` file each, by name.
+let examples = [
+  "Quenya", "Sindarin", "OldNorse", "IndoEuropean", "Polynesian", "Sinitic", "DineBizaad",
+  "Klingon", "Sumerian", "Thelimu",
+]
+
+/// The package's `Examples` directory.
+let examplesDirectory = URL(filePath: #filePath)
+  .deletingLastPathComponent()  // ConlangrTests
+  .deletingLastPathComponent()  // Tests
+  .deletingLastPathComponent()  // the package
+  .appending(path: "Examples")
+
+/// The source of the example grammar `name`, from `Examples/<name>.conlangr`.
+func example(_ name: String) throws -> String {
+  try String(contentsOf: examplesDirectory.appending(path: "\(name).conlangr"), encoding: .utf8)
+}
 
 /// A small seeded generator, so that tests which sample many words are deterministic.
 struct SplitMix64: RandomNumberGenerator {

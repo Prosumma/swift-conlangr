@@ -25,80 +25,10 @@ import Testing
 /// takes the place of the consonant after it. The spelling comes last: aspirates are written ph,
 /// th, kh and qh, and the retracted vowels with a dot below.
 struct ThelimuTests {
-  /// What happens where morphemes meet, vowel harmony, and the spelling, which the sandhi tests
-  /// also apply to known forms.
-  static let rules = """
-    ; Sandhi. A mutation changes the consonant after the prefix, and then the
-    ; prefix's vowel is lost before a vowel. A nasal takes the place of the
-    ; consonant after it, and of two aspirates in a row, the first loses its
-    ; aspiration. That runs twice, so a third aspirate loses it too.
-    @sandhi = (
-      > *ᴸ·{p t k q}ʰ*={f s h x} *ᴸ·{p t k q}*={b d g ɣ}
-        *ᴺ·{p t k q}ʰ*={m̥ n̥ ŋ̊ ŋ̊} *ᴺ·{p t k q b d g}*={m n ŋ ŋ m n ŋ}
-        *ᴸ*=_ *ᴺ*=_
-        *{I E O U A}·{I E O U A}*={_ _ _ _ _}·{} *·*=_
-        *ⁿ{p b f m w}*=m{} *ⁿ{k g q h ŋ}*=ŋ{} *ⁿ*=n
-      @grassmann @grassmann)
-    @grassmann = (> *{p t k q}ʰ{I E O U A}{p t k q}ʰ*={}{}{}ʰ
-      *{p t k q}ʰ{I E O U A}{m n ŋ l r s}{p t k q}ʰ*={}{}{}{}ʰ)
-
-    ; Vowel harmony. A has no advanced partner, so an advanced word can't
-    ; have one.
-    @advanced = (- *A* > *{I E O U}*={i e o u})
-    @retracted = (> *{I E O U A}*={ɪ ɛ ɔ ʊ a})
-
-    ; The spelling. ŋ is written n before a velar or uvular, as in English
-    ; "think".
-    @spelling = (> *ʰ*=h *ɣ*=gh *{m̥ n̥ ŋ̊}*={mh nh ngh} *ŋ{k g q}*=n{} *ŋ*=ng
-      *{ɪ ɛ ɔ ʊ}*={ị ẹ ọ ụ})
-    """
-
-  static let source = """
-    ; Thelimu, an invented language. Words are built from morphemes, which
-    ; meet with the sandhi, and then vowel harmony makes every vowel in the
-    ; word advanced or retracted.
-
-    $nouns = 3
-    $verbs = 2
-
-    _ = (? $nouns &noun $verbs &verb)
-
-    ; Each word chooses its harmony, and then it's spelled.
-    noun = (? (+ &nounForm @advanced) (+ &nounForm @retracted) @spelling)
-    verb = (? (+ &verbForm @advanced) (+ &verbForm @retracted) @spelling)
-
-    ; A noun: perhaps a possessive prefix, the root, and perhaps a case
-    ; ending. mi- "my" softens the consonant after it, u- "your" makes it a
-    ; nasal, and se- "his, her" leaves it alone.
-    nounForm = (+ (? 4 _ 1 mIᴸ· 1 Uᴺ· 1 sE·) &nounStart &rest
-      (? 4 _ 1 ·nI 1 ·tE 1 ·lU 1 ·rO)
-      @sandhi)
-    ; The root's first syllable, repeated for the plural, but not if that
-    ; would put two vowels together.
-    nounStart = (? 4 &first 1 (+ &first ^first) - *{I E O U A}{I E O U A}*)
-    rest = (+ (? 4 _ 1 &coda) &syllable (? 2 _ 1 (+ (? 4 _ 1 &coda) &syllable))
-      (? 2 _ 1 &coda))
-
-    ; A verb: perhaps a subject prefix, the root, repeated for an action
-    ; done again and again, and perhaps an aspect: -re for an action in
-    ; progress, -ma for one to come, and -tu for one that's done.
-    verbForm = (+ (? 2 _ 2 Iⁿ· 2 kO· 1 tE· 1 sU·) &verbStem
-      (? 4 _ 2 ·rE 1 ·mA 1 ·tU)
-      @sandhi)
-    verbStem = (? 5 &verbRoot 1 (+ &verbRoot ^verbRoot) - *{I E O U A}{I E O U A}*)
-    verbRoot = (+ &first (? 4 _ 1 &coda) &syllable)
-
-    ; Syllables. Only a word's first syllable can start with a vowel, and
-    ; only a nasal, l, r or s can end one.
-    first = (+ (? 8 &C 1 _) &V)
-    syllable = (+ &C &V)
-    C = (? 3 p 4 t 4 k 2 q 1 pʰ 2 tʰ 2 kʰ 1 qʰ 2 b 3 d 2 g 2 f 4 s 2 š 3 h
-      4 m 4 n 2 ŋ 4 l 3 r 2 w 2 y)
-    V = (? 4 A 3 I 2 E 2 O 3 U)
-    coda = (? 4 ⁿ 2 l 2 r 1 s)
-
-    \(rules)
-    """
+  /// The grammar, in `Examples/Thelimu.conlangr`.
+  static var source: String {
+    get throws { try example("Thelimu") }
+  }
 
   static let advanced = Set("ieou")
   static let retracted = Set("ịẹọụa")
@@ -210,7 +140,10 @@ struct ThelimuTests {
   ])
   func sandhi(form: String, spelled: String) throws {
     let harmony = form.contains("A") ? "@retracted" : "@advanced"
-    let generator = try Generator("\(Self.rules)\n_ = (+ \(form) @sandhi \(harmony) @spelling)")
+    // The grammar's own rule sets, applied to a known form instead of a generated one.
+    let generator = try #require(
+      try Generator(Self.source + "\nknown = (+ \(form) @sandhi \(harmony) @spelling)")
+        .starting(at: "known"))
     #expect(try generator.generate() == spelled)
   }
 

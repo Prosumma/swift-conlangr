@@ -1,0 +1,45 @@
+; Inspired by Old Norse. The grammar writes θ for both þ and ð, ɑ for the
+; diphthong au (so that u-umlaut, which turns a into ǫ, leaves it alone),
+; ks for x, and · between the parts of a compound.
+
+$nouns = 6
+$compounds = 2
+$verbs = 2
+$umlaut = 2       ; how often a noun takes an ending with u, out of 14
+
+_ = (+ (? $nouns &noun $compounds &compound $verbs &verb)
+  > *{l n m}θ*={}d                      ; the past's ð is d after l, n and m,
+    *{s k p t f}θ*={}t                  ; and t after a voiceless consonant
+    *{á é í ó ú ý æ}lr={}ll              ; a final -r assimilates to l or n
+    *{á é í ó ú ei}nr={}nn *sr=s         ; after a long vowel, and is lost after s
+    θ*=þ *·θ*=·þ *θ*=ð                  ; þ starts a word or a compound's part
+    *·*=_ *ɑ*=au *ks*=x
+    *{s l n r t k g}{}{}*={}{})          ; no triple consonants
+
+; Nouns: a stem and a case ending. With an ending in u, a becomes ǫ.
+noun = (?
+  10 (+ &stem &ending)
+  $umlaut (+ (+ &stem > *a*=ǫ) (? 3 um 2 ur 1 u))
+  2 (+ &stem (? 3 i 2 a)))
+ending = (? 6 r 2 _ 1 s 1 ar 1 ir 1 a 1 inn)
+
+; Compounds, such as Miðgarðr and Ásþórr: a stem, then a noun or a name
+; element. The second part keeps its þ.
+compound = (+ &stem · (? 3 &noun 2 &element))
+element = (? 2 garθr 2 ulfr 2 steinn 1 geirr 1 bjǫrn 1 grímr 1 mundr
+  1 varθr 1 leifr 1 θórr 1 θórir 1 ketill 1 heimr)
+
+; Verbs: the infinitive, the present participle, and the weak past.
+verb = (+ &stem (? 4 a 2 aθi 2 θi 1 θa 1 andi))
+
+; A stem is a syllable that ends in a consonant.
+stem = (+ &onset &nucleus &coda)
+onset = (? 5 _ 3 h 3 s 3 b 2 d 3 f 3 g 3 k 2 l 3 m 3 n 1 p 2 r 3 t 4 θ 3 v
+  2 st 2 sk 1 sp 1 sn 1 sl 1 sv 2 br 1 bl 2 dr 2 fr 2 fl 2 gr 1 gl 2 hr
+  1 hl 1 hn 2 hv 2 kr 1 kl 1 kn 1 kv 1 pr 1 tr 1 θr 1 str 1 skr)
+nucleus = (? 6 a 5 e 4 i 4 o 3 u 2 y 1 ø
+  2 á 1 é 2 í 2 ó 1 ú 1 ý 1 æ 1 œ
+  3 ei 1 ey 2 ɑ 1 ja 1 jǫ 1 jó 1 jú)
+coda = (? 4 r 3 l 3 n 3 θ 2 g 2 k 2 t 2 s 2 f 2 m 1 p
+  2 nd 2 ng 2 nk 2 rn 2 rθ 2 rg 2 rk 2 rm 1 rf 1 rs 1 rt 1 ld 1 lf 1 lk
+  1 lm 1 ls 1 lt 1 st 1 sk 1 ft 1 kt 1 gg 1 kk 1 ll 1 nn 1 tt 1 ss 1 ks)

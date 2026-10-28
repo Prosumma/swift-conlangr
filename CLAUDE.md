@@ -41,6 +41,7 @@ swift run conlangr check some.conlangr   # the command-line tool
 | `Sources/ConlangrCLI/Options.swift` | The options the commands share, reading a script, and the seeded `Randomness` |
 | `Sources/ConlangrCLI/Report.swift` | How the tool prints diagnostics, warnings and traces |
 | `Sources/Conlangr/Tokens.swift` | Public `Token` and `tokenize(_:)`, a separate lexer for syntax highlighting |
+| `Examples/*.conlangr` | The example grammars, one per language, which the language tests read (see "Example grammars") |
 
 ## Pipeline
 
@@ -98,9 +99,10 @@ No input may crash the process, including on a secondary thread's 512 KB stack.
 
 ## Example grammars
 
-The language examples, one per file (`QuenyaTests.swift`, `SindarinTests.swift`, `OldNorseTests.swift`, `IndoEuropeanTests.swift`, `PolynesianTests.swift`, `SiniticTests.swift`, `DineBizaadTests.swift`, `KlingonTests.swift`, `SumerianTests.swift`, `ThelimuTests.swift`), double as documentation of good grammar-writing. README "More examples" lists them, so add new ones there too. New ones should follow the same conventions:
+The language examples are ordinary script files in `Examples`, one per language (`Quenya.conlangr`, `Sindarin.conlangr`, `OldNorse.conlangr`, `IndoEuropean.conlangr`, `Polynesian.conlangr`, `Sinitic.conlangr`, `DineBizaad.conlangr`, `Klingon.conlangr`, `Sumerian.conlangr`, `Thelimu.conlangr`), so they can be run with the tool, loaded and shared. Each has its tests in `Tests/ConlangrTests/<name>Tests.swift`, which read the file with `example(_:)` from `Support.swift`. They double as documentation of good grammar-writing. To add one, add the file, add its name to `examples` in `Support.swift` (`everyExampleIsListed` fails until you do, and `examplesHaveNone` then checks it has no warnings), write its tests, and list it in README "More examples". New ones should follow the same conventions:
 
 - **Idealize first, spell last.** Write the grammar with one symbol per sound, and turn it into the real orthography with substitutions at the very end of the outermost concat. Digraphs written early make patterns misfire (`*np*` matching *n* + *ph*). See README "Writing grammars", which also covers placeholders filled by local rewrites and agreement built into the grammar.
+- **Keep each file self-contained**, with every rule set it uses in the same file, so it can be shared on its own. A test that wants to apply the grammar's rule sets to a known form appends a production to the source and starts from it, as the Polynesian cognate and Thelimu sandhi tests do.
 - **Test the rules, not just the inventory.** Each example checks its language's rules over 2,000 words from a fixed seed. The inventory test also catches placeholders that leak into the output. A test of the output sees the spelled form, so it has to allow for digraphs itself.
 - **Check more than one seed** before settling on one, and look at a sample of words, since a grammar can pass every test and still not look like the language.
 - **Say what it's based on.** The doc comment names the sources and the rules modeled, and the grammar's own comments explain each part.

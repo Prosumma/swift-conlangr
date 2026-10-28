@@ -1,4 +1,5 @@
 import Conlangr
+import Foundation
 import Testing
 
 struct WarningTests {
@@ -6,13 +7,18 @@ struct WarningTests {
     #expect(try warnings("$n = 2\n_ = (+ $n &syllable > *a=á)\nsyllable = (? ka sa)") == [])
   }
 
-  @Test(arguments: [
-    QuenyaTests.source, SindarinTests.source, OldNorseTests.source, IndoEuropeanTests.source,
-    PolynesianTests.source, SiniticTests.source, DineBizaadTests.source, KlingonTests.source,
-    SumerianTests.source, ThelimuTests.source,
-  ])
-  func examplesHaveNone(source: String) throws {
-    #expect(try warnings(source) == [])
+  @Test(arguments: examples)
+  func examplesHaveNone(example name: String) throws {
+    #expect(try warnings(example(name)) == [])
+  }
+
+  /// Every file in `Examples` is in `examples`, so it's checked here and has its own tests.
+  @Test func everyExampleIsListed() throws {
+    let files = try FileManager.default.contentsOfDirectory(
+      at: examplesDirectory, includingPropertiesForKeys: nil)
+    let names = files.filter { $0.pathExtension == "conlangr" }
+      .map { $0.deletingPathExtension().lastPathComponent }
+    #expect(Set(names) == Set(examples))
   }
 
   @Test func areInSourceOrder() throws {

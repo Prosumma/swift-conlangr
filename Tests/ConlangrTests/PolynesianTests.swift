@@ -21,47 +21,10 @@ import Testing
 /// would have to be carefully ordered, or every t would end up as ʔ. Reduplication happens in the
 /// ancestor, so the sound changes apply to both copies alike.
 struct PolynesianTests {
-  /// The sound changes and the spelling, which the cognate tests also apply to known words.
-  static let rules = """
-    ; The sound changes, all at once, so that the old t becomes k without the
-    ; old k, which becomes ʔ, also turning into something else.
-    @soundChanges = (> *{ʔ h k t f s ŋ r v}*={_ _ ʔ k h h n l w})
-
-    ; How both languages write long vowels, ŋ and ʔ.
-    @spelling = (> *{a e i o u}{}*={ā ē ī ō ū} *ŋ*=ng *ʔ*=ʻ)
-    """
-
-  static let source = """
-    ; Polynesian. Words are generated in the ancestral language and, usually,
-    ; passed through the sound changes of the descendant. Long vowels are
-    ; written double until the end.
-
-    $descendant = 3
-    $ancestor = 1
-
-    _ = (? $descendant &descendant $ancestor &ancestor)
-
-    ; A lost consonant mustn't leave three like vowels together.
-    descendant = (+ &word @soundChanges - *{a e i o u}{}{}* @spelling)
-    ancestor = (+ &word @spelling)
-
-    ; A word is a root, perhaps with an affix.
-    word = (+ (? 8 &root 2 (+ &prefix &root) 3 (+ &root &suffix) 1 (+ &prefix &root &suffix))
-      - *{a e i o u}{}{}*)
-    ; A root of two or three syllables, sometimes reduplicated: entirely, or
-    ; just its first syllable.
-    root = (? 8 &plainRoot 1 (+ &pair ^pair) 1 (+ &syllable ^syllable &syllable))
-    plainRoot = (+ &syllable &syllable (? 3 _ 1 &syllable))
-    pair = (+ &syllable &syllable)
-    syllable = (+ (? 8 &C 1 _) &V)
-    prefix = (? 3 faka 1 fe 1 ma)
-    suffix = (? 3 ŋa 2 ʔia 1 ina)
-
-    C = (? 2 p 4 t 4 k 2 ʔ 3 m 3 n 2 ŋ 3 f 2 s 2 h 3 l 2 r 2 v)
-    V = (? 8 a 4 e 6 i 6 o 5 u 1 aa 1 ee 1 ii 1 oo 1 uu)
-
-    \(rules)
-    """
+  /// The grammar, in `Examples/Polynesian.conlangr`.
+  static var source: String {
+    get throws { try example("Polynesian") }
+  }
 
   static let vowels = Set("aeiouāēīōū")
   static let descendantLetters = vowels.union("hklmnpwʻ")
@@ -132,7 +95,10 @@ struct PolynesianTests {
     ("hiva", "iwa"),  // nine
   ])
   func soundChanges(ancestor: String, descendant: String) throws {
-    let generator = try Generator("\(Self.rules)\n_ = (+ \(ancestor) @soundChanges @spelling)")
+    // The grammar's own rule sets, applied to a known word instead of a generated one.
+    let generator = try #require(
+      try Generator(Self.source + "\nknown = (+ \(ancestor) @soundChanges @spelling)")
+        .starting(at: "known"))
     #expect(try generator.generate() == descendant)
   }
 }

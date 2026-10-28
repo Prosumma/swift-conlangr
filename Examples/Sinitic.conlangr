@@ -1,0 +1,49 @@
+; A Sinitic language, written in pinyin. Each syllable starts with a dot,
+; and its tone is a superscript number after the vowel that will carry the
+; mark. The spelling rules at the end, in order, give zero initials y or
+; w, shorten iou, uei and uen after a consonant, write ü as u after j, q
+; and x, add apostrophes, and mark the tones.
+
+_ = (+ &first (? 2 _ 6 &syllable 1 (+ &syllable &syllable))
+  > *.i{a e o}*=.y{} *.i*=.yi *.u{a o e}*=.w{} *.u*=.wu *.ü*=.yu  ; zero initials
+    *io{¹ ² ³ ⁴ ⁰}u*=iu{}                     ; iou → iu
+    *ue{¹ ² ³ ⁴ ⁰}i*=ui{}                     ; uei → ui
+    *ue{¹ ² ³ ⁴ ⁰}n*=u{}n                     ; uen → un
+    *{j q x}ü*={}u                            ; ü after j, q, x
+    .*=_ *.{a o e}*=%'{} *.*=_                ; apostrophes
+    *{a e i o u ü}¹*={ā ē ī ō ū ǖ}             ; tones
+    *{a e i o u ü}²*={á é í ó ú ǘ}
+    *{a e i o u ü}³*={ǎ ě ǐ ǒ ǔ ǚ}
+    *{a e i o u ü}⁴*={à è ì ò ù ǜ}
+    *{⁰ ẑ ĉ ŝ ŋ}*={_ zh ch sh ng})             ; the neutral tone isn't marked
+
+; The first syllable, which can't have the neutral tone.
+first = (+ &syllable - *⁰*)
+
+; A syllable: each group of initials takes only the finals it can.
+syllable = (+ . (?
+  3 (+ (? b p m) (? 6 &core 1 (+ o &T) 3 &frontL 1 (+ u &T)))
+  1 (+ f (? 6 &core 1 (+ o &T) 1 (+ u &T)))
+  3 (+ (? d t) (? 6 &core 1 &ong 3 &frontD 3 &roundD))
+  2 (+ (? n l) (? 6 &core 1 &ong 3 &front 2 &roundD 1 (+ ü &T) 1 (+ ü e &T)))
+  3 (+ (? g k h) (? 6 &core 1 &ong 4 &round))
+  3 (+ (? j q x) (? 6 &front 3 &umlaut))
+  3 (+ (? ẑ ĉ ŝ r) (? 6 &core 1 &ong 2 (+ i &T) 4 &round))
+  2 (+ (? z c s) (? 6 &core 1 &ong 2 (+ i &T) 3 &roundD))
+  3 (? 5 &core 1 (+ o &T) 3 &front 3 &round 1 &umlaut 1 (+ e &T r))))
+
+; Finals, each with its tone after the vowel that carries the mark.
+core = (? 3 (+ a &T) 2 (+ e &T) 2 (+ a &T i) 2 (+ e &T i) 2 (+ a &T o) 2 (+ o &T u)
+  3 (+ a &T n) 3 (+ e &T n) 3 (+ a &T ŋ) 2 (+ e &T ŋ))
+ong = (+ o &T ŋ)
+front = (? 3 (+ i &T) 2 (+ i a &T) 2 (+ i e &T) 2 (+ i a &T o) 2 (+ i o &T u)
+  2 (+ i a &T n) 2 (+ i &T n) 2 (+ i a &T ŋ) 2 (+ i &T ŋ) 1 (+ i o &T ŋ))
+frontL = (? 3 (+ i &T) 2 (+ i e &T) 2 (+ i a &T o) 2 (+ i a &T n) 2 (+ i &T n) 2 (+ i &T ŋ))
+frontD = (? 3 (+ i &T) 2 (+ i e &T) 2 (+ i a &T o) 2 (+ i o &T u) 2 (+ i a &T n) 2 (+ i &T ŋ))
+round = (? 3 (+ u &T) 1 (+ u a &T) 2 (+ u o &T) 1 (+ u a &T i) 2 (+ u e &T i)
+  2 (+ u a &T n) 2 (+ u e &T n) 1 (+ u a &T ŋ))
+roundD = (? 3 (+ u &T) 2 (+ u o &T) 2 (+ u e &T i) 2 (+ u a &T n) 2 (+ u e &T n))
+umlaut = (? 2 (+ ü &T) 2 (+ ü e &T) 1 (+ ü a &T n) 1 (+ ü &T n))
+
+; The four tones, and the neutral tone ⁰, which isn't marked when spelled.
+T = (? 3 ¹ 3 ² 2 ³ 3 ⁴ 1 ⁰)

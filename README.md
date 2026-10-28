@@ -456,22 +456,20 @@ A reference doesn't count toward the nesting limit, and a name documents what a 
 
 ## More examples
 
-Each of these test files holds a grammar for a language inspired by a real or fictional one, or in Thelimu's case made up from scratch, with tests that check it follows that language's rules. They're written the way [Writing grammars](#writing-grammars) recommends, and each one's comments explain what it models and where that comes from.
+The `Examples` directory holds a grammar for each of these languages, each inspired by a real or fictional one, or in Thelimu's case made up from scratch. They're ordinary `.conlangr` files, so you can run them with the command-line tool (`conlangr Examples/Quenya.conlangr`), load them in your own code, or share them. They're written the way [Writing grammars](#writing-grammars) recommends, and each file's comments explain its parts. Each has tests, in `Tests/ConlangrTests/<name>Tests.swift`, that check it follows that language's rules, and their doc comments say what it models and where that comes from.
 
-| File | Inspired by | Shows |
+| Example | Inspired by | Shows |
 |---|---|---|
-| `QuenyaTests.swift` | Tolkien's Quenya | Diaeresis and c/qu/x spelled at the end; plurals in -r and -i by ordered substitutions |
-| `SindarinTests.swift` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest, as rule sets; digraphs as single letters |
-| `OldNorseTests.swift` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
-| `IndoEuropeanTests.swift` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
-| `PolynesianTests.swift` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates; rule sets shared by two languages; full and partial reduplication |
-| `SiniticTests.swift` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
-| `DineBizaadTests.swift` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
-| `KlingonTests.swift` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |
-| `SumerianTests.swift` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes; plurals by reduplication |
-| `ThelimuTests.swift` | Nothing: invented for Conlangr | Vowel harmony chosen by a select with rule sets; consonant mutation after prefixes; Grassmann's law; reduplication; each part of speech a place to start |
-
-They're all in `Tests/ConlangrTests`.
+| `Quenya.conlangr` | Tolkien's Quenya | Diaeresis and c/qu/x spelled at the end; plurals in -r and -i by ordered substitutions |
+| `Sindarin.conlangr` | Tolkien's Sindarin | Plurals by vowel change in the last syllable and the rest, as rule sets; digraphs as single letters |
+| `OldNorse.conlangr` | Old Norse (normalized Old Icelandic) | One letter for þ and ð; u-umlaut as a local rewrite; assimilation; compounds |
+| `IndoEuropean.conlangr` | Proto-Indo-European | Ablaut with a placeholder vowel; laryngeal coloring; root constraints; sound laws |
+| `Polynesian.conlangr` | Proto-Polynesian and Hawaiian | Sound changes as one class, so a chain shift can't collapse, checked against real cognates; rule sets shared by two languages; full and partial reduplication |
+| `Sinitic.conlangr` | Mandarin in pinyin | Initials and finals that combine as in Mandarin; pinyin's spelling and tone marks |
+| `DineBizaad.conlangr` | Diné Bizaad (Navajo) | Sibilant harmony built into the grammar; tone and nasality |
+| `Klingon.conlangr` | Klingon | Case-sensitive spelling; verb and noun suffixes in ordered slots |
+| `Sumerian.conlangr` | Sumerian | Hyphenated cuneiform transliteration; vowel harmony in verbal prefixes; plurals by reduplication |
+| `Thelimu.conlangr` | Nothing: invented for Conlangr | Vowel harmony chosen by a select with rule sets; consonant mutation after prefixes; Grassmann's law; reduplication; each part of speech a place to start |
 
 ## License
 

@@ -17,51 +17,10 @@ import Testing
 ///
 /// The grammar writes k, kw, ks and plain e, and fills in the spelling at the end.
 struct QuenyaTests {
-  static let source = """
-    ; Inspired by Quenya. The grammar writes k for c, kw for qu, ks for x,
-    ; and e for ë, and the spelling is filled in at the end.
-
-    $words = 4
-    $plurals = 1      ; so one word in five is plural
-
-    _ = (+ (? $words &word $plurals &plural)
-      > *e{a o}*=e{ä ö} *oe*=oë *e=ë      ; an e or o in hiatus, or a final e, takes a diaeresis
-        *kw*=qu *ks*=x *k*=c)            ; and k is written c
-
-    ; A word is a first syllable, perhaps another, and an ending. A syllable
-    ; here is a vowel and the consonants after it, and only a short vowel can
-    ; come before a cluster.
-    word = (+ &first (? 3 _ 2 &syllable) &last)
-    first = (? 80 (+ &onset &syllable) 2 (+ e a &single) 1 (+ e o &single) 1 (+ o e &single))
-    syllable = (?
-      6 (+ &short &single) 4 (+ &short &cluster) 2 (+ &long &single) 1 (+ &diphthong &single))
-
-    ; The ending: a vowel, perhaps with a dental after it, or a name element
-    ; such as -ndil (friend), -ndur (servant), -ion (son) or -wë.
-    last = (?
-      8 (+ &end (? 3 _ 2 &final))
-      2 (+ &short (? 3 ndil 2 ndur))
-      2 (+ (? 3 &short 1 &long) &single (? 3 ion 2 ie))
-      1 (+ &short (? 3 n 3 l 1 r 1 s 1 ng) we))
-
-    ; Plurals: -i after a consonant, -ier for -ië, -i for -ë, and -r after
-    ; any other vowel. Each rule sees the word as the one before left it.
-    plural = (+ &word > *{n l r s t}={}i *ie=ier *e=i *{a o u}={}r)
-
-    onset = (? 7 _ 2 p 4 t 3 k 3 m 3 n 3 l 2 r 3 s 2 h 3 v 1 f 1 y
-      1 kw 1 ny 1 ty 1 hy 1 hw)
-    single = (? 4 l 4 n 4 r 3 m 4 s 3 t 3 k 1 p 2 v 1 f 1 h 2 y 1 w
-      1 kw 1 ny 1 ty 1 ly 1 ry 1 hy)
-    cluster = (? 3 nd 3 nt 2 ng 2 nk 1 ngw 1 nkw 2 mb 2 mp 2 ld 2 lt 1 lk
-      3 ll 2 lm 1 lv 1 lw 2 rd 2 rt 2 rm 2 rn 1 rk 1 rkw 1 rv 1 rw 3 ss 2 st
-      1 sk 1 ps 1 ts 1 ks 3 nn 2 mm 3 rr 1 ht 1 tt 1 pt 1 nw 1 ndy 1 lty)
-    final = (? 4 n 3 r 3 l 3 s 2 t)
-
-    short = (? 7 a 5 e 5 i 4 o 3 u)
-    long = (? 3 á 3 é 3 í 3 ó 2 ú)
-    diphthong = (? 3 ai 3 au 1 eu 1 iu 1 oi 1 ui)
-    end = (? 6 a 6 e 2 i 4 o 2 u 1 ai)
-    """
+  /// The grammar, in `Examples/Quenya.conlangr`.
+  static var source: String {
+    get throws { try example("Quenya") }
+  }
 
   static let vowels = Set("aeiouáéíóúëäö")
   static let letters = vowels.union("pctqmnlrshvfywdbgx")

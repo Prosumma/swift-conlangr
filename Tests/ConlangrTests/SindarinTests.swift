@@ -19,73 +19,10 @@ import Testing
 ///   becomes i. Elsewhere, a and o become e, and u becomes y: adan → edain, orch → yrch,
 ///   amon → emyn.
 struct SindarinTests {
-  static let source = """
-    ; Inspired by Sindarin. A word is a monosyllable, a longer word, or a
-    ; plural, whose vowels change.
-    ;
-    ; Each digraph is a single letter until the end, so that every rule sees
-    ; one letter per sound: þ is th, ð is dh, χ is ch, φ is ph, ł is lh, ř is
-    ; rh, and ƕ is hw. Then n before φ can't be mistaken for np.
-
-    $monosyllables = 2
-    $words = 6
-    $plurals = 2
-
-    _ = (+ (? $monosyllables &monosyllable $words &word $plurals &plural)
-      > *nr*=ðr *n{l m}*={}{} *n{b p}*=m{b m} *mp*=mm *dl*=ll  ; assimilation
-        *au=aw *v=f                       ; final au is written aw, final v is f
-        *{þ ð χ φ ł ř ƕ}*={th dh ch ph lh rh hw})  ; spell the digraphs
-
-    ; Monosyllables. A long vowel here takes a circumflex.
-    monosyllable = (?
-      4 (+ &onset &short &coda)
-      2 (+ &onset &circumflex &single)
-      1 (+ &onset &diphthong (? 2 _ 1 &single)))
-
-    ; Longer words: syllables, then an ending. The ending is a final syllable,
-    ; which seldom ends in a vowel, a suffix like -ion or -iel, or an element
-    ; like -dor or -wen. A long vowel or diphthong comes before at most one
-    ; consonant, and ai only in the last syllable.
-    word = (+ &onset &inner (? 4 _ 1 (+ &medial &inner)) &ending)
-    ending = (?
-      6 (+ &medial &short &coda)
-      1 (+ &medial &long &single)
-      1 (+ &medial &diphthong (? 1 _ 2 &single))
-      1 (+ &medial (? 3 a 2 e 1 i))
-      2 (+ &medial &suffix)
-      2 (+ &join &element))
-    suffix = (? 3 ion 2 ien 2 iel 2 or 2 on 1 eþ 1 aþ 1 ir 1 el 1 il 1 in 1 uin)
-    element = (? 3 dor 2 dir 2 wen 1 las 1 ras 1 born 1 rond 1 þil 1 duin 1 nor)
-
-    ; Plurals. The last syllable's vowel changes one way, and the rest another.
-    ; Long vowels don't change, so Dúnadan becomes Dúnedain.
-    plural = (?
-      1 (+ &onset &short &coda @final)
-      3 (+ (+ &onset &pluralVowel (? 3 _ 1 (+ &medial &pluralVowel)) @inner)
-        (+ &medial &short &coda @final)))
-    pluralVowel = (? 12 &short 2 &long 1 ai)
-    @final = (> *{a o e u}*={ai y i y})   ; adan → edain, orch → yrch
-    @inner = (> *{a o u}*={e e y})        ; amon → emyn
-
-    ; Consonants: at the start of a word, between vowels, at the end, and
-    ; where an element like -dor joins. Only an onset has ł, ř or ƕ.
-    onset = (? 6 _ 2 b 3 c 3 d 3 g 1 p 3 t 2 f 2 h 3 m 3 n 3 l 2 r 3 s 2 þ
-      1 gl 1 gr 1 br 1 dr 1 cr 1 cl 1 fl 1 þr 2 gw 1 ł 1 ř 1 ƕ)
-    medial = (? 3 d 2 g 2 b 3 l 3 r 3 n 2 m 2 s 3 þ 2 ð 2 χ 1 v 1 φ
-      3 nd 2 ng 2 nn 2 ll 2 ss 1 mm 2 dr 1 gl 1 gr 1 br 1 þr 1 rn 1 rþ 1 lþ
-      1 rχ 1 lχ 1 mb 1 lw 1 rw 1 nw)
-    single = (? 4 n 4 r 3 l 2 s 3 þ 1 ð 2 χ 1 v 1 d 1 g)
-    coda = (? 12 &single 2 nd 1 nt 1 ng 1 nn 1 ll 1 ss 1 rn 1 rχ 1 lχ 1 lφ
-      1 rþ 1 st)
-    join = (? 4 n 4 r 3 l 1 s 1 þ)
-
-    ; Vowels.
-    inner = (? 14 &short 2 &long 1 ei 1 ae 1 au)
-    short = (? 6 a 5 e 5 i 5 o 1 u 1 y)
-    long = (? 3 á 2 é 2 í 3 ó 2 ú 1 ý)
-    circumflex = (? 3 â 2 ê 3 î 2 ô 3 û 1 ŷ)
-    diphthong = (? 2 ai 1 ei 1 ui 2 ae 1 oe 2 au)
-    """
+  /// The grammar, in `Examples/Sindarin.conlangr`.
+  static var source: String {
+    get throws { try example("Sindarin") }
+  }
 
   static let vowels = Set("aeiouyáéíóúýâêîôûŷ")
   static let letters = vowels.union("bcdfghlmnprstvw")

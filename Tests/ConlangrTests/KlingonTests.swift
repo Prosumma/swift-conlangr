@@ -18,51 +18,10 @@ import Testing
 /// for S, č for ch, ɣ for gh, ŋ for ng, ƛ for tlh and ʔ for '), and the spelling is filled in at
 /// the end.
 struct KlingonTests {
-  static let source = """
-    ; Inspired by Klingon. Each sound is one lowercase symbol until the end:
-    ; ɖ x ɪ χ ʂ are D H I Q S, and č ɣ ŋ ƛ ʔ are ch gh ng tlh '.
-
-    $verbs = 5
-    $nouns = 4
-
-    _ = (+ (? $verbs &verb $nouns &noun)
-      > *{č ɣ ŋ ƛ ʔ ɖ x ɪ χ ʂ}*={ch gh ng tlh %' D H I Q S})
-
-    ; Verbs: a prefix for the subject and object, the root, suffixes in their
-    ; nine types (oneself, volition, change, cause, indefinite subject,
-    ; qualification, aspect, honorific, syntactic), and a rover.
-    verb = (+
-      (? 5 _ 1 vɪ 1 ɖa 1 wɪ 1 ma 1 jɪ 1 bɪ 1 qa 1 ʂu 1 lu 1 nu 1 mu 1 čo 1 yɪ)
-      &root
-      (? 24 _ 1 ʔeɣ 1 čuq)
-      (? 24 _ 1 nɪʂ 1 qaŋ 1 rup 1 bex 1 vɪp)
-      (? 24 _ 1 čox 1 qaʔ)
-      (? 28 _ 1 mox)
-      (? 24 _ 1 luʔ 1 lax)
-      (? 24 _ 1 čuʔ 1 bej 1 baʔ 1 lawʔ)
-      (? 10 _ 1 puʔ 1 taʔ 1 tax 1 lɪʔ)
-      (? 30 _ 1 neʂ)
-      (? 14 _ 1 ɖɪʔ 1 čuɣ 1 paʔ 1 vɪʂ 1 boɣ 1 mex 1 moʔ 1 jaj 1 wɪʔ 1 ɣač)
-      (? 12 _ 1 beʔ 1 χoʔ))
-
-    ; Nouns: the root, then suffixes in their five types (size, number,
-    ; qualification, possession, syntactic).
-    noun = (+
-      &root
-      (? 12 _ 1 ʔaʔ 1 xom 1 oy)
-      (? 8 _ 2 puʔ 1 ɖuʔ 2 mey)
-      (? 16 _ 1 qoq 1 xey 1 naʔ)
-      (? 10 _ 1 wɪj 1 lɪj 1 ɖaj 1 maj 1 raj 1 čaj 1 vam 1 veƛ)
-      (? 8 _ 1 ɖaq 1 voʔ 1 moʔ 1 vaɖ 1 ʔeʔ))
-
-    ; Roots: CVC, or CV(C)CVC. A syllable can also end in rgh, w' or y'.
-    root = (? 8 (+ &C &V &final) 2 (+ &C &V (? 2 _ 1 &C) &C &V &final))
-    final = (? 24 &C 1 rɣ 1 wʔ 1 yʔ)
-
-    C = (? 4 b 3 č 4 ɖ 3 ɣ 3 x 4 j 3 l 4 m 4 n 2 ŋ 3 p 4 q 3 χ 3 r 4 ʂ 4 t
-      2 ƛ 3 v 3 w 3 y 5 ʔ)
-    V = (? 5 a 4 e 4 ɪ 4 o 4 u)
-    """
+  /// The grammar, in `Examples/Klingon.conlangr`.
+  static var source: String {
+    get throws { try example("Klingon") }
+  }
 
   static let letters = Set("abDeghHIjlmnopqQrStuvwy'c")
 
